@@ -1,0 +1,3 @@
+[submodule "affctrllib"]
+	path = affctrllib
+	url = git@github.com:hrshtst/affctrllib.git
