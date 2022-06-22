@@ -20,11 +20,12 @@ BIAS_LIST = [0]
 def prepare_ctrl(
     config: str, sfreq: float | None, cfreq: float | None
 ) -> AffPosCtrlThread:
-    actrl = AffPosCtrlThread(config=config, freq=cfreq, sensor_freq=sfreq)
-    actrl.start()
-    actrl.wait_for_idling()
+    ctrl = AffPosCtrlThread(config=config, freq=cfreq, sensor_freq=sfreq)
+    ctrl.start()
+    ctrl.wait_for_idling()
     print("Waiting until robot gets stationary...")
     time.sleep(5)
+    return ctrl
 
 
 def prepare_output(output: str) -> Path:
@@ -81,7 +82,6 @@ def get_dqdes_trajectory(
 def prepare_for_next_trajectory(
     ctrl: AffPosCtrlThread, q0: np.ndarray, joint: int
 ) -> None:
-    print("Preparing next trajectory...")
     q = q0.copy()
     q[joint] = 0
     ctrl.reset_trajectory(q)
@@ -90,9 +90,9 @@ def prepare_for_next_trajectory(
 
 def record_one_trajectory(
     ctrl: AffPosCtrlThread,
-    lfreq: float | None,
     logger: Logger,
     log_filename: str | Path,
+    lfreq: float | None,
     qdes_func: Callable[[float], np.ndarray],
     dqdes_func: Callable[[float], np.ndarray],
     duration: float,
@@ -106,7 +106,7 @@ def record_one_trajectory(
     t = 0
     while t < duration:
         t = timer.elapsed_time()
-        logger.store(ctrl.logger.get_data[-1].copy())
+        logger.store(ctrl.logger.get_data()[-1].copy())
         timer.block()
     logger.dump()
 
@@ -130,18 +130,21 @@ def mainloop(
     logger = prepare_logger(ctrl.dof)
 
     # Record trajectories.
-    for (A, T, b) in itertools.product(AMPLITUDE_LIST, PERIOD_LIST, BIAS_LIST):
-        q0 = ctrl.state.q
-        qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-        dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-        log_filename = output_dir / f"A-{A}_T-{T}_b-{b}.csv"
-        prepare_for_next_trajectory(ctrl, joint)
-        print(f"Recording (A={A}, T={T}, b={b})...")
-        record_one_trajectory(
-            ctrl, lfreq, logger, log_filename, qdes_func, dqdes_func, duration
-        )
-    print("Quitting...")
-    ctrl.join()
+    try:
+        for (A, T, b) in itertools.product(AMPLITUDE_LIST, PERIOD_LIST, BIAS_LIST):
+            q0 = ctrl.state.q
+            qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
+            dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
+            log_filename = output_dir / f"A-{A}_T-{T}_b-{b}.csv"
+            print("Preparing next trajectory...")
+            prepare_for_next_trajectory(ctrl, q0, joint)
+            print(f"Recording (A={A}, T={T}, b={b})...")
+            record_one_trajectory(
+                ctrl, logger, log_filename, lfreq, qdes_func, dqdes_func, duration
+            )
+    finally:
+        print("Quitting...")
+        ctrl.join()
 
 
 def parse():
@@ -184,6 +187,15 @@ def parse():
 
 def main():
     args = parse()
+    mainloop(
+        args.config,
+        args.output,
+        args.joint,
+        args.time,
+        args.sfreq,
+        args.cfreq,
+        args.lfreq,
+    )
 
 
 if __name__ == "__main__":
