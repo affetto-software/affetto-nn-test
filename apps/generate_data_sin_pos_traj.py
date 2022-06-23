@@ -11,10 +11,13 @@ from affctrllib import AffPosCtrlThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_LOGGING_FREQ = 10
-AMPLITUDE_LIST = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+DEFAULT_DURATION = 20  # sec
+# AMPLITUDE_LIST = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 AMPLITUDE_LIST = [40]
 PERIOD_LIST = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-BIAS_LIST = [0]
+# PERIOD_LIST = [10]
+BIAS_LIST = [50]
+REPEAT_N = 10
 
 
 def prepare_ctrl(
