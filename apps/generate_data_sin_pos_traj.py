@@ -131,7 +131,7 @@ def generate_sin_trajectory(
     q0 = ctrl.state.q
     qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
     dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-    log_filename = output_dir / f"joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
+    log_filename = output_dir / f"sin-joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
     print("Preparing next trajectory...")
     prepare_for_next_trajectory(ctrl, q0, joint)
     print(f"Recording (joint={joint}, A={A}, T={T}, b={b}, i={i})...")
