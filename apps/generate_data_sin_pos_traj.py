@@ -53,6 +53,8 @@ def prepare_logger(dof: int) -> Logger:
         # command data
         [f"ca{i}" for i in range(dof)],
         [f"cb{i}" for i in range(dof)],
+        [f"qdes{i}" for i in range(dof)],
+        [f"dqdes{i}" for i in range(dof)],
     )
     return logger
 
@@ -83,7 +85,7 @@ def prepare_for_next_trajectory(
     ctrl: AffPosCtrlThread, q0: np.ndarray, joint: int
 ) -> None:
     q = q0.copy()
-    q[joint] = 0
+    q[joint] = 50
     ctrl.reset_trajectory(q)
     time.sleep(3)
 
@@ -104,11 +106,36 @@ def record_one_trajectory(
     ctrl.set_trajectory(qdes_func, dqdes_func)
     timer.start()
     t = 0
+    time.sleep(2 * ctrl.dt)  # wait until controller updated at least once
     while t < duration:
         t = timer.elapsed_time()
         logger.store(ctrl.logger.get_data()[-1].copy())
         timer.block()
     logger.dump()
+
+
+def generate_sin_trajectory(
+    ctrl: AffPosCtrlThread,
+    output_dir: Path,
+    logger: Logger,
+    joint: int,
+    duration: float,
+    lfreq: float,
+    A: float,
+    T: float,
+    b: float,
+    i: int,
+) -> None:
+    q0 = ctrl.state.q
+    qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
+    dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
+    log_filename = output_dir / f"joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
+    print("Preparing next trajectory...")
+    prepare_for_next_trajectory(ctrl, q0, joint)
+    print(f"Recording (joint={joint}, A={A}, T={T}, b={b}, i={i})...")
+    record_one_trajectory(
+        ctrl, logger, log_filename, lfreq, qdes_func, dqdes_func, duration
+    )
 
 
 def mainloop(
@@ -132,16 +159,10 @@ def mainloop(
     # Record trajectories.
     try:
         for (A, T, b) in itertools.product(AMPLITUDE_LIST, PERIOD_LIST, BIAS_LIST):
-            q0 = ctrl.state.q
-            qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-            dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-            log_filename = output_dir / f"A-{A}_T-{T}_b-{b}.csv"
-            print("Preparing next trajectory...")
-            prepare_for_next_trajectory(ctrl, q0, joint)
-            print(f"Recording (A={A}, T={T}, b={b})...")
-            record_one_trajectory(
-                ctrl, logger, log_filename, lfreq, qdes_func, dqdes_func, duration
-            )
+            for i in range(REPEAT_N):
+                generate_sin_trajectory(
+                    ctrl, output_dir, logger, joint, duration, lfreq, A, T, b, i
+                )
     finally:
         print("Quitting...")
         ctrl.join()
@@ -180,7 +201,11 @@ def parse():
         "-j", "--joint", default=0, type=int, help="Joint index to move"
     )
     parser.add_argument(
-        "-T", "--time", default=10, type=float, help="Time duration for each recording"
+        "-T",
+        "--time",
+        default=DEFAULT_DURATION,
+        type=float,
+        help="Time duration for each recording",
     )
     return parser.parse_args()
 
