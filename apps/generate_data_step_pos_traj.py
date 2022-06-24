@@ -116,10 +116,11 @@ def record_one_trajectory(
     logger.dump()
 
 
-def generate_sin_trajectory(
+def generate_step_trajectory(
     ctrl: AffPosCtrlThread,
     output_dir: Path,
     logger: Logger,
+    q0: np.ndarray,
     joint: int,
     duration: float,
     lfreq: float | None,
@@ -128,7 +129,6 @@ def generate_sin_trajectory(
     b: float,
     i: int,
 ) -> None:
-    q0 = ctrl.state.q
     qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
     dqdes_func = get_dqdes_trajectory(q0)
     log_filename = output_dir / f"step-joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
@@ -158,12 +158,15 @@ def mainloop(
     # Create logger.
     logger = prepare_logger(ctrl.dof)
 
+    # Get initial pose.
+    q0 = ctrl.state.q
+
     # Record trajectories.
     try:
         for (A, T, b) in itertools.product(AMPLITUDE_LIST, PERIOD_LIST, BIAS_LIST):
             for i in range(REPEAT_N):
-                generate_sin_trajectory(
-                    ctrl, output_dir, logger, joint, duration, lfreq, A, T, b, i
+                generate_step_trajectory(
+                    ctrl, output_dir, logger, q0, joint, duration, lfreq, A, T, b, i
                 )
     finally:
         print("Quitting...")
