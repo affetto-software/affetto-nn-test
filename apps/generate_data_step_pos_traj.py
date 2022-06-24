@@ -75,12 +75,9 @@ def get_qdes_trajectory(
     return qdes_func
 
 
-def get_dqdes_trajectory(
-    A: float, T: float, _: float, joint: int, q0: np.ndarray
-) -> Callable[[float], np.ndarray]:
-    def dqdes_func(t: float) -> np.ndarray:
+def get_dqdes_trajectory(q0: np.ndarray) -> Callable[[float], np.ndarray]:
+    def dqdes_func(_: float) -> np.ndarray:
         dq = np.zeros((len(q0),))
-        dq[joint] = A * T * np.cos(2.0 * np.pi * t / T) / (2.0 * np.pi)
         return dq
 
     return dqdes_func
@@ -133,7 +130,7 @@ def generate_sin_trajectory(
 ) -> None:
     q0 = ctrl.state.q
     qdes_func = get_qdes_trajectory(A, T, b, joint, q0)
-    dqdes_func = get_qdes_trajectory(A, T, b, joint, q0)
+    dqdes_func = get_dqdes_trajectory(q0)
     log_filename = output_dir / f"step-joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
     print("Preparing next trajectory...")
     prepare_for_next_trajectory(ctrl, q0, joint)
