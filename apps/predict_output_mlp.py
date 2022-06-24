@@ -19,17 +19,18 @@ def load_data(
     data_raw = pd.read_csv(file_path)  # type: ignore
     data = data_raw[:-n_delay]
     data_delayed = data_raw[n_delay:]
-    labels_X = [
-        f"q{joint}",
-        f"dq{joint}",
-        f"pa{joint}",
-        f"pb{joint}",
-        f"ca{joint}",
-        f"cb{joint}",
+    data_delayed = data_raw[n_delay:].reset_index(drop=True)
+    df_X = data[
+        [
+            f"q{joint}",
+            f"dq{joint}",
+            f"pa{joint}",
+            f"pb{joint}",
+            f"ca{joint}",
+            f"cb{joint}",
+        ]
     ]
-    labels_y = [f"q{joint}"]
-    df_X = data[labels_X]
-    df_y = data_delayed[labels_y]
+    df_y = data_delayed[[f"q{joint}"]]
     return df_X.to_numpy(), df_y.to_numpy()
 
 
