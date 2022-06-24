@@ -122,7 +122,7 @@ def generate_sin_trajectory(
     logger: Logger,
     joint: int,
     duration: float,
-    lfreq: float,
+    lfreq: float | None,
     A: float,
     T: float,
     b: float,
