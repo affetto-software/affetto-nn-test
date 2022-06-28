@@ -2,6 +2,7 @@
 
 import argparse
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ def load_data(
             f"cb{joint}",
         ]
     ]
-    df_y = data_delayed[[f"q{joint}"]]
+    df_y = data_delayed[[f"q{joint}", f"dq{joint}", f"pa{joint}", f"pb{joint}"]]
     return df_X.to_numpy(), df_y.to_numpy()
 
 
@@ -42,7 +43,7 @@ def load_data_from_directory(
     if not directory_path.is_dir():
         RuntimeError(f"{str(directory_path)} must be directory")
     data_files = directory_path.glob("*.csv")
-    X, y = np.empty(shape=(0, 6), dtype=float), np.empty(shape=(0, 1), dtype=float)
+    X, y = np.empty(shape=(0, 6), dtype=float), np.empty(shape=(0, 4), dtype=float)
     notfound = True
     for data_file in data_files:
         _X, _y = load_data(data_file, joint, n_delay)
@@ -65,14 +66,24 @@ def learn(
     return mlp
 
 
-def plot(mlp: MLPRegressor, X_test: np.ndarray, y_test: np.ndarray):
+def plot(
+    mlp: MLPRegressor,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    index: int | Iterable[int] = 0,
+    title: str | None = None,
+):
     print("plotting...")
     y_predict = mlp.predict(X_test)
     _, ax = plt.subplots()
-    ax.plot(y_test, label="test")
-    ax.plot(y_predict, label="predict")
+    if not isinstance(index, Iterable):
+        index = [index]
+    for i in index:
+        ax.plot(y_test[:, i], label="test")
+        ax.plot(y_predict[:, i], label="predict")
+    if title is not None:
+        ax.set_title(title)
     ax.legend()
-    plt.show()
 
 
 def parse():
@@ -166,7 +177,10 @@ def main():
     )
     X_test, y_test = load_data_from_directory(args.test_data, args.joint, args.n_delay)
     mlp = learn(X_train, y_train, params)
-    plot(mlp, X_test, y_test)
+    plot(mlp, X_test, y_test, 0, f"position (joint: {args.joint})")
+    plot(mlp, X_test, y_test, 1, f"velocity (joint: {args.joint})")
+    plot(mlp, X_test, y_test, [2, 3], f"pressure at actuator (joint: {args.joint})")
+    plt.show()
 
 
 if __name__ == "__main__":
