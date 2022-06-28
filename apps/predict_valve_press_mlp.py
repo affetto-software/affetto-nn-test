@@ -19,7 +19,7 @@ def load_data(
     data_raw = pd.read_csv(file_path)  # type: ignore
     data = data_raw[:-n_delay]
     data_delayed = data_raw[n_delay:].reset_index(drop=True)
-    q_dq_delayed = data_delayed[[f"q{joint}", f"q{joint}"]]
+    q_dq_delayed = data_delayed[[f"q{joint}", f"dq{joint}"]]
     states = data[[f"q{joint}", f"dq{joint}", f"pa{joint}", f"pb{joint}"]]
     df_X = pd.concat([q_dq_delayed, states], axis=1)
     df_y = data_delayed[[f"ca{joint}", f"cb{joint}"]]
