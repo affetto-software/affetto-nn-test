@@ -106,9 +106,9 @@ def record_one_trajectory(
     logger.set_filename(log_filename)
     ctrl.reset_timer()
     ctrl.set_trajectory(qdes_func, dqdes_func)
+    time.sleep(2 * ctrl.dt)  # wait until controller updated at least once
     timer.start()
     t = 0
-    time.sleep(2 * ctrl.dt)  # wait until controller updated at least once
     while t < duration:
         t = timer.elapsed_time()
         logger.store(ctrl.logger.get_data()[-1].copy())
