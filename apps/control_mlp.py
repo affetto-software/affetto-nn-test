@@ -134,7 +134,7 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
     comm, ctrl, state = prepare_controller(args.config, args.sfreq, args.cfreq)
     logger = prepare_logger(ctrl.dof, args.output)
     timer = Timer(rate=args.cfreq)
-    joint = args.joint
+    j = args.joint
     time_offset = args.n_predict * ctrl.dt
     q0 = state.q
     zeros = np.zeros(shape=(len(q0),))
@@ -151,15 +151,17 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
             rq, rdq, rpa, rpb = state.get_raw_states()
             q, dq, pa, pb = state.get_states()
             ca, cb = ctrl.update(t, q, dq, pa, pb, q0, zeros)
-            qdes = sinusoidal(t + time_offset, A, T, 0, b)
-            dqdes = sinusoidal(
+            qdes = q0.copy()
+            qdes[j] = sinusoidal(t + time_offset, A, T, 0, b)
+            dqdes = zeros.copy()
+            dqdes[j] = sinusoidal(
                 t + time_offset, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b
             )
-            X = np.array([[qdes, dqdes, q[joint], dq[joint], pa[joint], pb[joint]]])
+            X = np.array([[qdes[j], dqdes[j], q[j], dq[j], pa[j], pb[j]]])
             y = np.ravel(mlp.predict(X))
-            ca[joint], cb[joint] = ctrl.scale(y[0], y[1])
+            ca[j], cb[j] = ctrl.scale(y[0], y[1])
             comm.send_commands(ca, cb)
-            logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, q0, zeros)
+            logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
             timer.block()
 
     finally:
