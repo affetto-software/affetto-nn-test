@@ -268,7 +268,17 @@ def parse():
 
 def convert_args_to_mlp_params(args):
     params = vars(args).copy()
-    for k in ["train_data", "test_data", "joint", "n_predict", "n_ctrl_period"]:
+    for k in [
+        "train_data",
+        "test_data",
+        "joint",
+        "n_predict",
+        "n_ctrl_period",
+        "config",
+        "output",
+        "sfreq",
+        "cfreq",
+    ]:
         params.pop(k)
     v = params["hidden_layer_sizes"]
     params["hidden_layer_sizes"] = tuple(v)
