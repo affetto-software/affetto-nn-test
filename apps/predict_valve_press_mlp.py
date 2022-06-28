@@ -2,6 +2,7 @@
 
 import argparse
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -57,14 +58,24 @@ def learn(
     return mlp
 
 
-def plot(mlp: MLPRegressor, X_test: np.ndarray, y_test: np.ndarray):
+def plot(
+    mlp: MLPRegressor,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    index: int | Iterable[int] = 0,
+    title: str | None = None,
+):
     print("plotting...")
     y_predict = mlp.predict(X_test)
     _, ax = plt.subplots()
-    ax.plot(y_test, label="test")
-    ax.plot(y_predict, label="predict")
+    if not isinstance(index, Iterable):
+        index = [index]
+    for i in index:
+        ax.plot(y_test[:, i], label="test")
+        ax.plot(y_predict[:, i], label="predict")
+    if title is not None:
+        ax.set_title(title)
     ax.legend()
-    plt.show()
 
 
 def parse():
@@ -158,7 +169,8 @@ def main():
     )
     X_test, y_test = load_data_from_directory(args.test_data, args.joint, args.n_delay)
     mlp = learn(X_train, y_train, params)
-    plot(mlp, X_test, y_test)
+    plot(mlp, X_test, y_test, [0, 1], f"pressure at valve (joint: {args.joint})")
+    plt.show()
 
 
 if __name__ == "__main__":
