@@ -146,7 +146,7 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
     t = 0
     timer.start()
     try:
-        while True:
+        while t < 21:
             t = timer.elapsed_time()
             rq, rdq, rpa, rpb = state.get_raw_states()
             q, dq, pa, pb = state.get_states()
@@ -168,6 +168,7 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
         print("Quitting...")
         comm.close_command_socket()
         logger.dump()
+        time.sleep(0.1)
         state.join()
 
 
