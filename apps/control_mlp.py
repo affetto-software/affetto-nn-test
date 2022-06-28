@@ -31,7 +31,7 @@ def load_data(
         end = -(n_predict - n_ctrl_period)
         data_for_control = raw_data[n_ctrl_period:end]
     data_for_control = data_for_control.reset_index(drop=True)
-    desired = data_for_predict[[f"q{joint}", f"q{joint}"]]
+    desired = data_for_predict[[f"q{joint}", f"dq{joint}"]]
     states = data[[f"q{joint}", f"dq{joint}", f"pa{joint}", f"pb{joint}"]]
     df_X = pd.concat([desired, states], axis=1)
     df_y = data_for_control[[f"ca{joint}", f"cb{joint}"]]
