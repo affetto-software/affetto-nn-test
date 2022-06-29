@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import MinMaxScaler
 
 
 def load_data(
@@ -51,21 +52,25 @@ def load_data_from_directory(
 
 def learn(
     X_train: np.ndarray, y_train: np.ndarray, params: dict[str, Any]
-) -> MLPRegressor:
+) -> tuple[MLPRegressor, MinMaxScaler]:
     print("training...")
+    scaler = MinMaxScaler()
+    X_train = scaler.fit_transform(X_train)
     mlp = MLPRegressor(**params)
     mlp.fit(X_train, y_train)
-    return mlp
+    return mlp, scaler
 
 
 def plot(
     mlp: MLPRegressor,
+    scaler: MinMaxScaler,
     X_test: np.ndarray,
     y_test: np.ndarray,
     index: int | Iterable[int] = 0,
     title: str | None = None,
 ):
     print("plotting...")
+    X_test = scaler.transform(X_test)
     y_predict = mlp.predict(X_test)
     _, ax = plt.subplots()
     if not isinstance(index, Iterable):
@@ -168,8 +173,10 @@ def main():
         args.train_data, args.joint, args.n_delay
     )
     X_test, y_test = load_data_from_directory(args.test_data, args.joint, args.n_delay)
-    mlp = learn(X_train, y_train, params)
-    plot(mlp, X_test, y_test, [0, 1], f"pressure at valve (joint: {args.joint})")
+    mlp, scaler = learn(X_train, y_train, params)
+    plot(
+        mlp, scaler, X_test, y_test, [0, 1], f"pressure at valve (joint: {args.joint})"
+    )
     plt.show()
 
 

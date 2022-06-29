@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import MinMaxScaler
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 
@@ -59,21 +60,26 @@ def load_data_from_directory(
     return X, y
 
 
-def train(args: argparse.Namespace, params: dict[str, Any]) -> MLPRegressor:
+def train(
+    args: argparse.Namespace, params: dict[str, Any]
+) -> tuple[MLPRegressor, MinMaxScaler]:
     print("training...")
+    scaler = MinMaxScaler()
     X_train, y_train = load_data_from_directory(
         args.train_data, args.joint, args.n_predict, args.n_ctrl_period
     )
+    X_train = scaler.fit_transform(X_train)
     mlp = MLPRegressor(**params)
     mlp.fit(X_train, y_train)
-    return mlp
+    return mlp, scaler
 
 
-def plot(mlp: MLPRegressor, args: argparse.Namespace):
+def plot(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
     print("plotting...")
     X_test, y_test = load_data_from_directory(
         args.test_data, args.joint, args.n_predict, args.n_ctrl_period
     )
+    X_test = scaler.transform(X_test)
     y_predict = mlp.predict(X_test)
     _, ax = plt.subplots()
     ax.plot(y_test, label="test")
@@ -291,9 +297,9 @@ def convert_args_to_mlp_params(args):
 def main():
     args = parse()
     params = convert_args_to_mlp_params(args)
-    mlp = train(args, params)
+    mlp, scaler = train(args, params)
     if args.test_data is not None:
-        plot(mlp, args)
+        plot(mlp, scaler, args)
     else:
         control(mlp, args)
 
