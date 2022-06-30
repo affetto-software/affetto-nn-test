@@ -143,7 +143,17 @@ def control(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
     j = args.joint
     time_offset = args.n_predict * ctrl.dt
     q0 = state.q
+    q0[j] = 50
     zeros = np.zeros(shape=(len(q0),))
+    t = 0
+    timer.start()
+    print("Back to home position...")
+    while t < 3:
+        t = timer.elapsed_time()
+        q, dq, pa, pb = state.get_states()
+        ca, cb = ctrl.update(t, q, dq, pa, pb, q0, zeros)
+        comm.send_commands(ca, cb)
+        timer.block()
 
     A = 40
     T = 5
