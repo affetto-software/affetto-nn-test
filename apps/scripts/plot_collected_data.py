@@ -45,7 +45,7 @@ def make_mask(t, between=None):
         return (t >= between[0]) & (t <= between[1])
 
 
-def plot_q(data_list, joint, **sfparam):
+def plot_q(data_list, joint, title, **sfparam):
     fig, ax = plt.subplots()
     if len(data_list) > 0:
         data = data_list[0]
@@ -66,15 +66,17 @@ def plot_q(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "position [0-100]",
-        "title": "Joint angle",
+        "title": title,
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "q"
+        sfparam["filename"] = title.translate(
+            str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+        )
     savefig(fig, **sfparam)
 
 
-def plot_dq(data_list, joint, **sfparam):
+def plot_dq(data_list, joint, title, **sfparam):
     fig, ax = plt.subplots()
     if len(data_list) > 0:
         data = data_list[0]
@@ -95,15 +97,17 @@ def plot_dq(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "velocity [/s]",
-        "title": "Joint velocity",
+        "title": title,
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "dq"
+        sfparam["filename"] = title.translate(
+            str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+        )
     savefig(fig, **sfparam)
 
 
-def plot_pressure(data_list, joint, **sfparam):
+def plot_pressure(data_list, joint, title, **sfparam):
     fig, ax = plt.subplots()
     for data in data_list:
         mask = make_mask(data.t, sfparam["time"])
@@ -118,15 +122,17 @@ def plot_pressure(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "pressure [kPa]",
-        "title": "Pressure at actuator",
+        "title": title,
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "pressure"
+        sfparam["filename"] = title.translate(
+            str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+        )
     savefig(fig, **sfparam)
 
 
-def plot_pressure_valve(data_list, joint, **sfparam):
+def plot_pressure_valve(data_list, joint, title, **sfparam):
     fig, ax = plt.subplots()
     for data in data_list:
         mask = make_mask(data.t, sfparam["time"])
@@ -147,11 +153,14 @@ def plot_pressure_valve(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "pressure [kPa]",
-        "title": "Pressure at valve",
+        "title": title,
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "pressure"
+        sfparam["filename"] = "pressure_valve"
+        sfparam["filename"] = title.translate(
+            str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+        )
     savefig(fig, **sfparam)
 
 
@@ -176,10 +185,11 @@ def plot(
             warnings.warn(
                 f"No data files found in {str(data_dir)} (pattern: {pattern})"
             )
-        plot_q(data_list, j, **sfparam)
-        plot_dq(data_list, j, **sfparam)
-        plot_pressure(data_list, j, **sfparam)
-        plot_pressure_valve(data_list, j, **sfparam)
+        suffix = f" (A={A}, T={T}, b={b})"
+        plot_q(data_list, j, "Joint angle" + suffix, **sfparam)
+        plot_dq(data_list, j, "Joint velocity" + suffix, **sfparam)
+        plot_pressure(data_list, j, "Pressure at actuator" + suffix, **sfparam)
+        plot_pressure_valve(data_list, j, "Pressure at valve" + suffix, **sfparam)
 
 
 def parse():
