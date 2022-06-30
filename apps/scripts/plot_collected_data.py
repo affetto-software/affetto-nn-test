@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,15 @@ def make_mask(t, between=None):
 
 def plot_q(data_list, joint, **sfparam):
     fig, ax = plt.subplots()
+    if len(data_list) > 0:
+        data = data_list[0]
+        mask = make_mask(data.t, sfparam["time"])
+        ax.plot(
+            data.t[mask],
+            getattr(data, f"qdes{joint}")[mask],
+            label=f"qdes[{joint}]",
+            lw=1,
+        )
     for data in data_list:
         mask = make_mask(data.t, sfparam["time"])
         ax.plot(
@@ -56,6 +66,7 @@ def plot_q(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "position [0-100]",
+        "title": "Joint angle",
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
@@ -65,6 +76,15 @@ def plot_q(data_list, joint, **sfparam):
 
 def plot_dq(data_list, joint, **sfparam):
     fig, ax = plt.subplots()
+    if len(data_list) > 0:
+        data = data_list[0]
+        mask = make_mask(data.t, sfparam["time"])
+        ax.plot(
+            data.t[mask],
+            getattr(data, f"dqdes{joint}")[mask],
+            label=f"dqdes[{joint}]",
+            lw=1,
+        )
     for data in data_list:
         mask = make_mask(data.t, sfparam["time"])
         ax.plot(
@@ -75,6 +95,7 @@ def plot_dq(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "velocity [/s]",
+        "title": "Joint velocity",
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
@@ -97,6 +118,7 @@ def plot_pressure(data_list, joint, **sfparam):
     pparam = {
         "xlabel": "time [s]",
         "ylabel": "pressure [kPa]",
+        "title": "Pressure at actuator",
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
@@ -104,14 +126,60 @@ def plot_pressure(data_list, joint, **sfparam):
     savefig(fig, **sfparam)
 
 
-def plot(data_dir: str | Path, joints: list[int], sfparam: dict[Any]):
+def plot_pressure_valve(data_list, joint, **sfparam):
+    fig, ax = plt.subplots()
+    for data in data_list:
+        mask = make_mask(data.t, sfparam["time"])
+        ax.plot(
+            data.t[mask],
+            getattr(data, f"ca{joint}")[mask] * 600 / 255,
+            label=f"ca[{joint}]",
+            lw=1,
+        )
+        ax.plot(
+            data.t[mask],
+            getattr(data, f"cb{joint}")[mask] * 600 / 255,
+            label=f"cb[{joint}]",
+            lw=1,
+        )
+    ax.grid(axis="y")
+    # ax.legend(title="Measured pressure")
+    pparam = {
+        "xlabel": "time [s]",
+        "ylabel": "pressure [kPa]",
+        "title": "Pressure at valve",
+    }
+    ax.set(**pparam)
+    if sfparam.get("filename", None) is None:
+        sfparam["filename"] = "pressure"
+    savefig(fig, **sfparam)
+
+
+def plot(
+    data_dir: str | Path,
+    joints: list[int],
+    traj_type: str,
+    A: float,
+    T: float,
+    b: float,
+    sfparam: dict[str, Any],
+):
     data_dir = Path(data_dir)
-    for joint in joints:
-        data_files = data_dir.glob(f"joint-{joint}_A-40_T-10_b-50_*.csv")
+    for j in joints:
+        # pattern = f"{traj_type}[-_]joint-{j}_A-{A}_T-{T}_b-{b}_*.csv"
+        pattern = (
+            f"{traj_type}[-_]joint-{j}_A-{round(A)}_T-{round(T)}_b-{round(b)}_*.csv"
+        )
+        data_files = data_dir.glob(pattern)
         data_list = [Data(f) for f in data_files]
-        plot_q(data_list, joint, **sfparam)
-        plot_dq(data_list, joint, **sfparam)
-        plot_pressure(data_list, joint, **sfparam)
+        if len(data_list) == 0:
+            warnings.warn(
+                f"No data files found in {str(data_dir)} (pattern: {pattern})"
+            )
+        plot_q(data_list, j, **sfparam)
+        plot_dq(data_list, j, **sfparam)
+        plot_pressure(data_list, j, **sfparam)
+        plot_pressure_valve(data_list, j, **sfparam)
 
 
 def parse():
@@ -135,13 +203,42 @@ def parse():
         help="extensions to save as figures",
     )
     parser.add_argument(
-        "-t", "--time", nargs="+", type=float, help="time range to show in figure"
+        "-T", "--time", nargs="+", type=float, help="time range to show in figure"
     )
     parser.add_argument(
         "-s", "--savefig", action="store_true", help="export figures if specified"
     )
     parser.add_argument(
         "-x", "--noshow", action="store_true", help="do not show figures if specified"
+    )
+    parser.add_argument(
+        "-t",
+        "--trajectory",
+        dest="traj_type",
+        default="sin",
+        choices=["sin", "step"],
+        help="Trajectory type to be generated.",
+    )
+    parser.add_argument(
+        "-a",
+        "--amplitude",
+        default=40.0,
+        type=float,
+        help="Amplitude for reference trajectory.",
+    )
+    parser.add_argument(
+        "-p",
+        "--period",
+        default=5.0,
+        type=float,
+        help="Period for reference trajectory.",
+    )
+    parser.add_argument(
+        "-b",
+        "--bias",
+        default=50.0,
+        type=float,
+        help="Bias for reference trajectory.",
     )
     return parser.parse_args()
 
@@ -154,7 +251,15 @@ def main():
     sfparam["basedir"] = args.basedir
     sfparam["extensions"] = args.extension
 
-    plot(args.data_dir, args.joint, sfparam)
+    plot(
+        args.data_dir,
+        args.joint,
+        args.traj_type,
+        args.amplitude,
+        args.period,
+        args.bias,
+        sfparam,
+    )
     if not args.noshow:
         plt.show()
 
