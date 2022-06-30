@@ -136,7 +136,7 @@ def step(t: float, A: float, T: float, phi: float, b: float) -> float:
         return b - A
 
 
-def control(mlp: MLPRegressor, args: argparse.Namespace):
+def control(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
     comm, ctrl, state = prepare_controller(args.config, args.sfreq, args.cfreq)
     logger = prepare_logger(ctrl.dof, args.output)
     timer = Timer(rate=args.cfreq)
@@ -164,6 +164,7 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
                 t + time_offset, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b
             )
             X = np.array([[qdes[j], dqdes[j], q[j], dq[j], pa[j], pb[j]]])
+            X = scaler.transform(X)
             y = np.ravel(mlp.predict(X))
             # ca[j], cb[j] = ctrl.scale(y[0] + 50, y[1] + 50)
             ca[j], cb[j] = y[0], y[1]
@@ -302,7 +303,7 @@ def main():
     if args.test_data is not None:
         plot(mlp, scaler, args)
     else:
-        control(mlp, args)
+        control(mlp, scaler, args)
 
 
 if __name__ == "__main__":
