@@ -11,10 +11,10 @@ from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]
-DEFAULT_DURATION = 20  # sec
-DEFAULT_AMPLITUDE_LIST = [40]
-DEFAULT_PERIOD_LIST = [5, 10]
-DEFAULT_BIAS_LIST = [50]
+DEFAULT_DURATION = 20.0  # sec
+DEFAULT_AMPLITUDE_LIST = [40.0]
+DEFAULT_PERIOD_LIST = [5.0, 10.0]
+DEFAULT_BIAS_LIST = [50.0]
 DEFAULT_N_REPEAT = 10
 
 
