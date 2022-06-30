@@ -165,7 +165,8 @@ def control(mlp: MLPRegressor, args: argparse.Namespace):
             )
             X = np.array([[qdes[j], dqdes[j], q[j], dq[j], pa[j], pb[j]]])
             y = np.ravel(mlp.predict(X))
-            ca[j], cb[j] = ctrl.scale(y[0] + 50, y[1] + 50)
+            # ca[j], cb[j] = ctrl.scale(y[0] + 50, y[1] + 50)
+            ca[j], cb[j] = y[0], y[1]
             comm.send_commands(ca, cb)
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
             timer.block()
