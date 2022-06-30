@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 
 from _fit import fit_data
 from _loader import LoaderBase
-from _plot import plot_prediction
+from _plot import convert_args_to_sfparam, plot_prediction
 
 
 class Loader(LoaderBase):
@@ -44,12 +44,16 @@ def plot(
     reg: Pipeline,
     X_test: np.ndarray,
     y_test: np.ndarray,
+    sfparam: dict[str, Any],
 ) -> None:
     print("plotting...")
-    suffix = f" (joint: {args.joint}, k: {args.n_predict}, scaler: {args.scaler})"
-    plot_prediction(reg, X_test, y_test, [0, 1], "pressure at valve" + suffix)
+    suffix = f" (joint={args.joint}, k={args.n_predict}, scaler={args.scaler})"
+    plot_prediction(
+        reg, X_test, y_test, index=[0, 1], title="pressure at valve" + suffix, **sfparam
+    )
     print(f"score={reg.score(X_test, y_test)}")
-    plt.show()
+    if not args.noshow:
+        plt.show()
 
 
 def parse():
@@ -106,31 +110,44 @@ def parse():
         default=False,
         help="When set to True, forces the coefficients to be positive. This option is only supported for dense arrays.",
     )
+    parser.add_argument(
+        "-d", "--basedir", default="fig", help="directory where figures will be saved"
+    )
+    parser.add_argument(
+        "-e",
+        "--extension",
+        default=["png"],
+        nargs="+",
+        help="extensions to save as figures",
+    )
+    parser.add_argument(
+        "-T", "--time", nargs="+", type=float, help="time range to show in figure"
+    )
+    parser.add_argument(
+        "-s", "--savefig", action="store_true", help="export figures if specified"
+    )
+    parser.add_argument(
+        "-x", "--noshow", action="store_true", help="do not show figures if specified"
+    )
     return parser.parse_args()
 
 
 def convert_args_to_reg_params(args):
-    params = vars(args).copy()
-    for k in [
-        "train_data",
-        "test_data",
-        "joint",
-        "n_predict",
-        "n_ctrl_period",
-        "scaler",
-    ]:
-        params.pop(k)
+    args_dict = vars(args).copy()
+    keys = ["fit_intercept", "copy_X", "n_jobs"]
+    params = {k: args_dict[k] for k in keys}
     return params
 
 
 def main():
     args = parse()
     params = convert_args_to_reg_params(args)
+    sfparam = convert_args_to_sfparam(args)
     loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
     X_train, y_train = loader.load(args.train_data)
     X_test, y_test = loader.load(args.test_data)
     reg = fit(args, X_train, y_train, params)
-    plot(args, reg, X_test, y_test)
+    plot(args, reg, X_test, y_test, sfparam)
 
 
 if __name__ == "__main__":
