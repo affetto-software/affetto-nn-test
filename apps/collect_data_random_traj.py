@@ -251,6 +251,7 @@ def mainloop(
     t_max: float,
     limit: list[float],
     n_repeat: int,
+    start_index: int,
     sfreq: float | None = None,
     cfreq: float | None = None,
 ):
@@ -269,7 +270,7 @@ def mainloop(
     # Record trajectories.
     cnt = 0
     try:
-        for i in range(n_repeat):
+        for i in range(start_index, start_index + n_repeat):
             record(
                 comm,
                 ctrl,
@@ -377,6 +378,13 @@ def parse():
         type=int,
         help="Number of times to repeat each reference trajectory.",
     )
+    parser.add_argument(
+        "-i",
+        "--start-index",
+        default=0,
+        type=int,
+        help="Start index to record reference trajectory.",
+    )
     return parser.parse_args()
 
 
@@ -392,6 +400,7 @@ def main():
         args.time_range,
         args.limit,
         args.n,
+        args.start_index,
         args.sfreq,
         args.cfreq,
     )
