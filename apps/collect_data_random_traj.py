@@ -4,7 +4,7 @@ import argparse
 import random
 import time
 from pathlib import Path
-from typing import Callable, Generator
+from typing import Callable, Generator, Iterable
 
 import numpy as np
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
@@ -72,7 +72,7 @@ def prepare_logger(dof: int) -> Logger:
 
 
 def create_const_trajectory(
-    qdes: float, joint: int, q0: np.ndarray
+    qdes: float | list[float] | np.ndarray, joint: int | list[int], q0: np.ndarray
 ) -> tuple[Callable[[float], np.ndarray], Callable[[float], np.ndarray]]:
     def qdes_func(_: float) -> np.ndarray:
         q = np.copy(q0)
@@ -147,7 +147,7 @@ def control_random(
     comm: AffComm,
     ctrl: AffPosCtrl,
     state: AffStateThread,
-    joint: int,
+    joint: int | list[int],
     generator: GeneratorT,
     duration: float,
     logger: Logger | None = None,
@@ -174,9 +174,9 @@ def control_random(
 
 def random_trajectory_generator(
     q0: np.ndarray,
-    joint: int,
+    joint: int | list[int],
     seed: int | None,
-    qdes_first: float,
+    qdes_first: float | list[float] | np.ndarray,
     diff_max: float,
     t_range: list[float],
     limit: list[float],
@@ -191,14 +191,18 @@ def random_trajectory_generator(
         ValueError(f"First element must be lower then sencond: {limit[0]} < {limit[1]}")
     if seed is not None:
         random.seed(seed)
-    qdes = qdes_first
+        np.random.seed(seed)
+
+    qdes = np.atleast_1d(qdes_first)
     while True:
-        qdes_new = random.uniform(qdes - diff_max, qdes + diff_max)
-        if qdes_new < limit[0]:
-            qdes_new = limit[0] + (limit[0] - qdes_new)
-        elif qdes_new > limit[1]:
-            qdes_new = limit[1] - (qdes_new - limit[1])
-        qdes_new = min(max(limit[0], qdes_new), limit[1])
+        qdes_new = np.random.uniform(qdes - diff_max, qdes + diff_max)
+        qdes_new[qdes_new < limit[0]] = limit[0] + (
+            limit[0] - qdes_new[qdes_new < limit[0]]
+        )
+        qdes_new[qdes_new > limit[1]] = limit[1] - (
+            qdes_new[qdes_new > limit[1]] - limit[1]
+        )
+        qdes_new = np.minimum(np.maximum(limit[0], qdes_new), limit[1])
         T = random.uniform(t_range[0], t_range[1])
         yield T, *create_const_trajectory(qdes_new, joint, q0)
         qdes = qdes_new
@@ -211,7 +215,7 @@ def record(
     output_dir: Path,
     logger: Logger,
     q0: np.ndarray,
-    joint: int,
+    joint: int | list[int],
     duration: float,
     seed: int | None,
     diff_max: float,
@@ -222,11 +226,15 @@ def record(
     N: int,
 ):
     print("Preparing for next trajectory...")
-    qdes_first = 50
+    if isinstance(joint, Iterable):
+        qdes_first = [50 for _ in range(len(joint))]
+    else:
+        qdes_first = 50
     qdes_func, dqdes_func = create_const_trajectory(qdes_first, joint, q0)
     control(comm, ctrl, state, qdes_func, dqdes_func, 3)
     print(f"Recording {cnt}/{N} (joint={joint}, i={i})...")
-    log_filename = output_dir / f"random_joint-{joint}_{i:02}.csv"
+    joint_str = str(joint).strip("[]").replace(" ", "")
+    log_filename = output_dir / f"random_joint-{joint_str}_{i:02}.csv"
     generator = random_trajectory_generator(
         q0, joint, seed, qdes_first, diff_max, t_max, limit
     )
@@ -236,7 +244,7 @@ def record(
 def mainloop(
     config: str,
     output: str,
-    joint: int,
+    joint: int | list[int],
     duration: float,
     seed: int | None,
     diff_max: float,
@@ -377,7 +385,7 @@ def main():
     mainloop(
         args.config,
         args.output,
-        args.joint[0],
+        args.joint,
         args.time,
         args.seed,
         args.max_diff,
