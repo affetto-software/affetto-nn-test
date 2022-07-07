@@ -176,9 +176,14 @@ def plot(
     data_dir = Path(data_dir)
     for j in joints:
         # pattern = f"{traj_type}[-_]joint-{j}_A-{A}_T-{T}_b-{b}_*.csv"
-        pattern = (
-            f"{traj_type}[-_]joint-{j}_A-{round(A)}_T-{round(T)}_b-{round(b)}_*.csv"
-        )
+        if traj_type in ("sin", "step"):
+            pattern = (
+                f"{traj_type}[-_]joint-{j}_A-{round(A)}_T-{round(T)}_b-{round(b)}_*.csv"
+            )
+        elif traj_type in ("random", "rand"):
+            pattern = f"random_joint-{j}_*.csv"
+        else:
+            pattern = f"*.csv"
         data_files = data_dir.glob(pattern)
         data_list = [Data(f) for f in data_files]
         if len(data_list) == 0:
@@ -226,7 +231,7 @@ def parse():
         "--trajectory",
         dest="traj_type",
         default="sin",
-        choices=["sin", "step"],
+        choices=["sin", "step", "rand", "random"],
         help="Trajectory type to be generated.",
     )
     parser.add_argument(
