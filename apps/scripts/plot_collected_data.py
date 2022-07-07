@@ -167,7 +167,7 @@ def plot_pressure_valve(data_list, joint, title, **sfparam):
 def plot(
     data_dir: str | Path,
     joints: list[int],
-    traj_type: str,
+    traj_type: str | None,
     A: float,
     T: float,
     b: float,
@@ -181,7 +181,8 @@ def plot(
                 f"{traj_type}[-_]joint-{j}_A-{round(A)}_T-{round(T)}_b-{round(b)}_*.csv"
             )
         elif traj_type in ("random", "rand"):
-            pattern = f"random_joint-{j}_*.csv"
+            joints_str = str(joint).strip("[]").replace(" ", "")
+            pattern = f"random_joint-{joints_str}_*.csv"
         else:
             pattern = f"*.csv"
         data_files = data_dir.glob(pattern)
@@ -232,6 +233,7 @@ def parse():
         dest="traj_type",
         default="sin",
         choices=["sin", "step", "rand", "random"],
+        default=None,
         help="Trajectory type to be generated.",
     )
     parser.add_argument(
