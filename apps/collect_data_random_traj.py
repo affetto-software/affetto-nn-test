@@ -14,8 +14,8 @@ DEFAULT_JOINT_LIST = [0]
 DEFAULT_DURATION = 60.0  # sec
 DEFAULT_SEED = 18641126
 DEFAULT_MAX_UPDATE_DIFF = 40.0
-DEFAULT_MAX_UPDATE_TIME = 5.0
-DEFAULT_LIMIT = [10.0, 90.0]
+DEFAULT_TIME_RANGE = [0.1, 0.5]
+DEFAULT_LIMIT = [5.0, 95.0]
 DEFAULT_N_REPEAT = 10
 
 
@@ -147,6 +147,7 @@ def control_random(
     comm: AffComm,
     ctrl: AffPosCtrl,
     state: AffStateThread,
+    joint: int,
     generator: GeneratorT,
     duration: float,
     logger: Logger | None = None,
@@ -165,8 +166,10 @@ def control_random(
         if t > duration:
             break
         t0 = t
+        print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
         _control_random(comm, ctrl, state, timer, t0, T, qdes_func, dqdes_func, logger)
         t = timer.elapsed_time()
+    logger.dump()
 
 
 def random_trajectory_generator(
@@ -175,9 +178,13 @@ def random_trajectory_generator(
     seed: int,
     qdes_first: float,
     diff_max: float,
-    t_max: float,
+    t_range: list[float],
     limit: list[float],
 ) -> GeneratorT:
+    if len(t_range) == 0:
+        t_range = DEFAULT_TIME_RANGE
+    elif len(t_range) == 1:
+        t_range.insert(0, 0.0)
     if len(limit) <= 1:
         ValueError(f"Size of limit requires at least 2: len(limit)={len(limit)}")
     elif limit[0] >= limit[1]:
@@ -185,8 +192,13 @@ def random_trajectory_generator(
     random.seed(seed)
     qdes = qdes_first
     while True:
-        qdes_new = min(max(limit[0], qdes + random.random() * diff_max), limit[1])
-        T = random.random() * t_max
+        qdes_new = random.uniform(qdes - diff_max, qdes + diff_max)
+        if qdes_new < limit[0]:
+            qdes_new = limit[0] + (limit[0] - qdes_new)
+        elif qdes_new > limit[1]:
+            qdes_new = limit[1] - (qdes_new - limit[1])
+        qdes_new = min(max(limit[0], qdes_new), limit[1])
+        T = random.uniform(t_range[0], t_range[1])
         yield T, *create_const_trajectory(qdes_new, joint, q0)
         qdes = qdes_new
 
@@ -217,7 +229,7 @@ def record(
     generator = random_trajectory_generator(
         q0, joint, seed, qdes_first, diff_max, t_max, limit
     )
-    control_random(comm, ctrl, state, generator, duration, logger, log_filename)
+    control_random(comm, ctrl, state, joint, generator, duration, logger, log_filename)
 
 
 def mainloop(
@@ -337,10 +349,11 @@ def parse():
     )
     parser.add_argument(
         "-t",
-        "--max-time",
-        default=DEFAULT_MAX_UPDATE_TIME,
+        "--time-range",
+        nargs="+",
+        default=DEFAULT_TIME_RANGE,
         type=float,
-        help="Maximum time when desired position is updated.",
+        help="Time range when desired position is updated.",
     )
     parser.add_argument(
         "-l",
@@ -366,11 +379,11 @@ def main():
     mainloop(
         args.config,
         args.output,
-        args.joint,
+        args.joint[0],
         args.time,
         args.seed,
         args.max_diff,
-        args.max_time,
+        args.time_range,
         args.limit,
         args.n,
         args.sfreq,
