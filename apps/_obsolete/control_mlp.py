@@ -170,9 +170,9 @@ def control(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
             qdes = q0.copy()
             qdes[j] = sinusoidal(t + time_offset, A, T, 0, b)
             dqdes = zeros.copy()
-            dqdes[j] = sinusoidal(
-                t + time_offset, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b
-            )
+            # dqdes[j] = sinusoidal(
+            #     t + time_offset, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b
+            # )
             X = np.array([[qdes[j], dqdes[j], q[j], dq[j], pa[j], pb[j]]])
             X = scaler.transform(X)
             y = np.ravel(mlp.predict(X))
