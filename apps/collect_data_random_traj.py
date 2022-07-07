@@ -343,20 +343,20 @@ def parse():
         help="Maximum time when desired position is updated.",
     )
     parser.add_argument(
-        "-n",
-        "--n-repeat",
-        dest="n",
-        default=DEFAULT_N_REPEAT,
-        type=int,
-        help="Number of times to repeat each reference trajectory.",
-    )
-    parser.add_argument(
         "-l",
         "--limit",
         nargs="+",
         default=DEFAULT_LIMIT,
         type=float,
         help="Joint limit.",
+    )
+    parser.add_argument(
+        "-n",
+        "--n-repeat",
+        dest="n",
+        default=DEFAULT_N_REPEAT,
+        type=int,
+        help="Number of times to repeat each reference trajectory.",
     )
     return parser.parse_args()
 
