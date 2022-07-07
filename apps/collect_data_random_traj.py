@@ -232,7 +232,7 @@ def record(
         qdes_first = 50
     qdes_func, dqdes_func = create_const_trajectory(qdes_first, joint, q0)
     control(comm, ctrl, state, qdes_func, dqdes_func, 3)
-    print(f"Recording {cnt}/{N} (joint={joint}, i={i})...")
+    print(f"Recording {cnt + 1}/{N} (joint={joint}, i={i})...")
     joint_str = str(joint).strip("[]").replace(" ", "")
     log_filename = output_dir / f"random_joint-{joint_str}_{i:02}.csv"
     generator = random_trajectory_generator(

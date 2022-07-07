@@ -181,7 +181,7 @@ def plot(
                 f"{traj_type}[-_]joint-{j}_A-{round(A)}_T-{round(T)}_b-{round(b)}_*.csv"
             )
         elif traj_type in ("random", "rand"):
-            joints_str = str(joint).strip("[]").replace(" ", "")
+            joints_str = str(joints).strip("[]").replace(" ", "")
             pattern = f"random_joint-{joints_str}_*.csv"
         else:
             pattern = f"*.csv"
@@ -231,9 +231,8 @@ def parse():
         "-t",
         "--trajectory",
         dest="traj_type",
-        default="sin",
-        choices=["sin", "step", "rand", "random"],
         default=None,
+        choices=["sin", "step", "rand", "random"],
         help="Trajectory type to be generated.",
     )
     parser.add_argument(

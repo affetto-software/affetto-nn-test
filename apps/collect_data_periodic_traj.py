@@ -181,7 +181,7 @@ def record(
     print("Preparing for next trajectory...")
     qdes_func, dqdes_func = TRAJECTORY["const"](A, T, b, joint, q0)
     control(comm, ctrl, state, qdes_func, dqdes_func, 3)
-    print(f"Recording {cnt}/{N} (joint={joint}, A={A}, T={T}, b={b}, i={i})...")
+    print(f"Recording {cnt + 1}/{N} (joint={joint}, A={A}, T={T}, b={b}, i={i})...")
     qdes_func, dqdes_func = TRAJECTORY[traj_type](A, T, b, joint, q0)
     log_filename = (
         output_dir / f"{traj_type}_joint-{joint}_A-{A}_T-{T}_b-{b}_{i:02}.csv"
@@ -215,7 +215,7 @@ def mainloop(
     q0 = state.q
 
     # Record trajectories.
-    N = len(amplitude) * len(period) * len(bias)
+    N = len(amplitude) * len(period) * len(bias) * n_repeat
     cnt = 0
     try:
         for (A, T, b) in itertools.product(amplitude, period, bias):
