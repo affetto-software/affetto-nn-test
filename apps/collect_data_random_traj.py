@@ -12,7 +12,7 @@ from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]
 DEFAULT_DURATION = 60.0  # sec
-DEFAULT_SEED = 18641126
+DEFAULT_SEED = None
 DEFAULT_MAX_UPDATE_DIFF = 40.0
 DEFAULT_TIME_RANGE = [0.1, 0.5]
 DEFAULT_LIMIT = [5.0, 95.0]
@@ -166,7 +166,7 @@ def control_random(
         if t > duration:
             break
         t0 = t
-        print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
+        # print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
         _control_random(comm, ctrl, state, timer, t0, T, qdes_func, dqdes_func, logger)
         t = timer.elapsed_time()
     logger.dump()
@@ -175,7 +175,7 @@ def control_random(
 def random_trajectory_generator(
     q0: np.ndarray,
     joint: int,
-    seed: int,
+    seed: int | None,
     qdes_first: float,
     diff_max: float,
     t_range: list[float],
@@ -189,7 +189,8 @@ def random_trajectory_generator(
         ValueError(f"Size of limit requires at least 2: len(limit)={len(limit)}")
     elif limit[0] >= limit[1]:
         ValueError(f"First element must be lower then sencond: {limit[0]} < {limit[1]}")
-    random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
     qdes = qdes_first
     while True:
         qdes_new = random.uniform(qdes - diff_max, qdes + diff_max)
@@ -212,7 +213,7 @@ def record(
     q0: np.ndarray,
     joint: int,
     duration: float,
-    seed: int,
+    seed: int | None,
     diff_max: float,
     t_max: float,
     limit: list[float],
@@ -237,7 +238,7 @@ def mainloop(
     output: str,
     joint: int,
     duration: float,
-    seed: int,
+    seed: int | None,
     diff_max: float,
     t_max: float,
     limit: list[float],
@@ -256,9 +257,6 @@ def mainloop(
 
     # Get initial pose.
     q0 = state.q
-
-    # Initialize pseudo-random number generator.
-    random.seed(seed)
 
     # Record trajectories.
     cnt = 0
