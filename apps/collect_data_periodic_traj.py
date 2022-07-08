@@ -145,7 +145,8 @@ def control(
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
         timer.block()
-    logger.dump()
+    if logger is not None:
+        logger.dump()
 
 
 TRAJECTORY: dict[

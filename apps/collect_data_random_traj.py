@@ -152,6 +152,7 @@ def control_random(
     duration: float,
     logger: Logger | None = None,
     log_filename: str | Path | None = None,
+    quiet: bool = True,
 ):
     timer = Timer(rate=ctrl.freq)
     if logger is not None:
@@ -166,10 +167,12 @@ def control_random(
         if t > duration:
             break
         t0 = t
-        # print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
+        if not quiet:
+            print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
         _control_random(comm, ctrl, state, timer, t0, T, qdes_func, dqdes_func, logger)
         t = timer.elapsed_time()
-    logger.dump()
+    if logger is not None:
+        logger.dump()
 
 
 def random_trajectory_generator(
@@ -219,7 +222,7 @@ def record(
     duration: float,
     seed: int | None,
     diff_max: float,
-    t_max: float,
+    t_range: list[float],
     limit: list[float],
     i: int,
     cnt: int,
@@ -227,16 +230,16 @@ def record(
 ):
     print("Preparing for next trajectory...")
     if isinstance(joint, Iterable):
-        qdes_first = [50 for _ in range(len(joint))]
+        qdes_first = [50.0 for _ in range(len(joint))]
     else:
-        qdes_first = 50
+        qdes_first = 50.0
     qdes_func, dqdes_func = create_const_trajectory(qdes_first, joint, q0)
     control(comm, ctrl, state, qdes_func, dqdes_func, 3)
     print(f"Recording {cnt + 1}/{N} (joint={joint}, i={i})...")
     joint_str = str(joint).strip("[]").replace(" ", "")
     log_filename = output_dir / f"random_joint-{joint_str}_{i:02}.csv"
     generator = random_trajectory_generator(
-        q0, joint, seed, qdes_first, diff_max, t_max, limit
+        q0, joint, seed, qdes_first, diff_max, t_range, limit
     )
     control_random(comm, ctrl, state, joint, generator, duration, logger, log_filename)
 
@@ -248,7 +251,7 @@ def mainloop(
     duration: float,
     seed: int | None,
     diff_max: float,
-    t_max: float,
+    t_range: list[float],
     limit: list[float],
     n_repeat: int,
     start_index: int,
@@ -282,7 +285,7 @@ def mainloop(
                 duration,
                 seed,
                 diff_max,
-                t_max,
+                t_range,
                 limit,
                 i,
                 cnt,
