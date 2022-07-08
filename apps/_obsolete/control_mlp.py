@@ -167,16 +167,17 @@ def control(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
             rq, rdq, rpa, rpb = state.get_raw_states()
             q, dq, pa, pb = state.get_states()
             ca, cb = ctrl.update(t, q, dq, pa, pb, q0, zeros)
-            qdes = q0.copy()
-            qdes[j] = sinusoidal(t + time_offset, A, T, 0, b)
-            dqdes = zeros.copy()
-            # dqdes[j] = sinusoidal(
+            qdes, qdes_offset = q0.copy(), q0.copy()
+            qdes[j] = sinusoidal(t, A, T, 0, b)
+            qdes_offset[j] = sinusoidal(t + time_offset, A, T, 0, b)
+            dqdes, dqdes_offset = zeros.copy(), zeros.copy()
+            # dqdes[j] = sinusoidal(t, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b)
+            # dqdes_offset[j] = sinusoidal(
             #     t + time_offset, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b
             # )
-            X = np.array([[qdes[j], dqdes[j], q[j], dq[j], pa[j], pb[j]]])
+            X = np.array([[qdes_offset[j], dqdes_offset[j], q[j], dq[j], pa[j], pb[j]]])
             X = scaler.transform(X)
             y = np.ravel(mlp.predict(X))
-            # ca[j], cb[j] = ctrl.scale(y[0] + 50, y[1] + 50)
             ca[j], cb[j] = y[0], y[1]
             comm.send_commands(ca, cb)
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
