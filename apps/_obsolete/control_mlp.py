@@ -170,6 +170,8 @@ def control(mlp: MLPRegressor, scaler: MinMaxScaler, args: argparse.Namespace):
             qdes, qdes_offset = q0.copy(), q0.copy()
             qdes[j] = sinusoidal(t, A, T, 0, b)
             qdes_offset[j] = sinusoidal(t + time_offset, A, T, 0, b)
+            # qdes[j] = step(t, A, T, 0, b)
+            # qdes_offset[j] = step(t + time_offset, A, T, 0, b)
             dqdes, dqdes_offset = zeros.copy(), zeros.copy()
             # dqdes[j] = sinusoidal(t, A * T / (2.0 * np.pi), T, -0.5 * np.pi, b)
             # dqdes_offset[j] = sinusoidal(
