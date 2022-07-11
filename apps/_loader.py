@@ -9,7 +9,7 @@ import pandas as pd
 class LoaderBase(ABC):
     def __init__(
         self,
-        joint: int,
+        joint: int | list[int],
         n_predict: int,
         n_ctrl_period: int = 0,
     ) -> None:
@@ -23,7 +23,7 @@ class LoaderBase(ABC):
     @staticmethod
     @abstractmethod
     def reshape(
-        joint: int,
+        joint: int | list[int],
         data: pd.DataFrame,
         data_for_predict: pd.DataFrame,
         data_for_control: pd.DataFrame,
