@@ -2,7 +2,6 @@
 
 import argparse
 import time
-import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -12,7 +11,6 @@ import pandas as pd
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler
 
 from _fit import fit_data
 from _loader import LoaderBase
