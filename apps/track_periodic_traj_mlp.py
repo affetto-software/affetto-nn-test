@@ -179,9 +179,10 @@ def control(
     timer = Timer(rate=ctrl.freq)
     if logger is not None:
         logger.erase_data()
-        logger.set_filename(
-            log_filename if log_filename is not None else Path("data.csv")
-        )
+        if log_filename is not None:
+            logger.fpath = log_filename
+        elif logger.fpath is None:
+            logger.fpath = Path("data.csv")
     timer.start()
     t = 0
     while t < duration:
@@ -215,9 +216,10 @@ def control_reg(
     timer = Timer(rate=ctrl.freq)
     if logger is not None:
         logger.erase_data()
-        logger.set_filename(
-            log_filename if log_filename is not None else Path("data.csv")
-        )
+        if log_filename is not None:
+            logger.fpath = log_filename
+        elif logger.fpath is None:
+            logger.fpath = Path("data.csv")
     timer.start()
     t = 0
     if isinstance(joint, Iterable):
@@ -290,7 +292,6 @@ def mainloop(args: argparse.Namespace, reg: Pipeline):
         args.duration,
         time_offset,
         logger,
-        log_filename,
     )
 
 
@@ -494,7 +495,7 @@ def main():
         X_test, y_test = loader.load(args.test_data)
         plot(args, reg, X_test, y_test, sfparam)
     else:
-        control(args, reg)
+        mainloop(args, reg)
 
 
 if __name__ == "__main__":
