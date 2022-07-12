@@ -259,7 +259,7 @@ TRAJECTORY: dict[
 }
 
 
-def mainloop(args: argparse.Namespace, reg: Pipeline):
+def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
     # Prepare controller.
     comm, ctrl, state = prepare_ctrl(args.config, args.sfreq, args.cfreq)
 
@@ -283,18 +283,29 @@ def mainloop(args: argparse.Namespace, reg: Pipeline):
         # Track a periodic trajectory.
         time_offset = args.n_predict * ctrl.dt
         qdes_func, dqdes_func = TRAJECTORY[args.traj_type](A, T, b, args.joint, q0)
-        control_reg(
-            reg,
-            comm,
-            ctrl,
-            state,
-            args.joint,
-            qdes_func,
-            dqdes_func,
-            args.duration,
-            time_offset,
-            logger,
-        )
+        if reg is None:
+            control(
+                comm,
+                ctrl,
+                state,
+                qdes_func,
+                dqdes_func,
+                args.duration,
+                logger=logger,
+            )
+        else:
+            control_reg(
+                reg,
+                comm,
+                ctrl,
+                state,
+                args.joint,
+                qdes_func,
+                dqdes_func,
+                args.duration,
+                time_offset,
+                logger=logger,
+            )
     finally:
         print("Quitting...")
         comm.close_command_socket()
@@ -307,8 +318,13 @@ def parse():
         description="Make robot track periodic trajectory using MLPRegressor"
     )
     parser.add_argument(
+        "--ctrl",
+        choices=["pid", "mlp"],
+        default="mlp",
+        help="Controller type to be executed.",
+    )
+    parser.add_argument(
         "--train-data",
-        required=True,
         help="Path to directory where train data files are stored.",
     )
     parser.add_argument(
@@ -494,14 +510,17 @@ def main():
     args = parse()
     params = convert_args_to_reg_params(args)
     sfparam = convert_args_to_sfparam(args)
-    loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
-    X_train, y_train = loader.load(args.train_data)
-    reg = fit(args, X_train, y_train, params)
-    if args.test_data is not None:
-        X_test, y_test = loader.load(args.test_data)
-        plot(args, reg, X_test, y_test, sfparam)
+    if args.ctrl == "mlp":
+        loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
+        X_train, y_train = loader.load(args.train_data)
+        reg = fit(args, X_train, y_train, params)
+        if args.test_data is not None:
+            X_test, y_test = loader.load(args.test_data)
+            plot(args, reg, X_test, y_test, sfparam)
+        else:
+            mainloop(args, reg)
     else:
-        mainloop(args, reg)
+        mainloop(args, None)
 
 
 if __name__ == "__main__":
