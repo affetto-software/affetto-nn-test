@@ -1,6 +1,7 @@
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -19,6 +20,13 @@ class LoaderBase(ABC):
         self._joint = joint
         self._n_predict = n_predict
         self._n_ctrl_period = n_ctrl_period
+
+    @classmethod
+    def labels(cls, label: str, joints: int | list[int]) -> list[str]:
+        if not isinstance(joints, Iterable):
+            joints = [joints]
+        labels = [label + str(i) for i in joints]
+        return labels
 
     @staticmethod
     @abstractmethod
