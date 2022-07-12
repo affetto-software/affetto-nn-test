@@ -39,6 +39,7 @@ class Spline:
         self._data = pd.read_csv(self._fpath)  # type: ignore
         self.find_dof()
         self._joints = joints if joints is not None else list(range(self._dof))
+        self.find_spline()
 
     def find_dof(self, data: pd.DataFrame | None = None) -> int:
         if data is None:
@@ -52,7 +53,7 @@ class Spline:
         self._tck = []
         self._der = []
         for q_i in self._joints:
-            y = self._data[q_i].to_numpy()
+            y = self._data[f"rq{q_i}"].to_numpy()
             tck = interpolate.splrep(x, y)
             self._tck.append(tck)
             self._der.append(interpolate.splder(tck))
@@ -277,6 +278,10 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
     # Get initial pose.
     q0 = state.q
 
+    # Load recorded data.
+    print("Loading recorded data...")
+    spline = Spline(args.record_data, args.joint)
+
     try:
         # Get back to home position.
         print("Getting back to home position...")
@@ -285,7 +290,6 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
 
         # Track the recorded trajectory.
         time_offset = args.n_predict * ctrl.dt
-        spline = Spline(args.record_data, args.joint)
         qdes_func = spline.get_qdes_func(q0)
         dqdes_func = spline.get_dqdes_func(q0)
         if reg is None:
@@ -394,6 +398,7 @@ def parse():
     parser.add_argument(
         "-D",
         "--time-duration",
+        dest="duration",
         default=DEFAULT_DURATION,
         type=float,
         help="Time duration to execute.",
