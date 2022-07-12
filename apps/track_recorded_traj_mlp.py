@@ -256,8 +256,9 @@ def control_reg(
             )
         )
         y = np.ravel(reg.predict(X))
-        ca[joints] = y[:joints]
-        cb[joints] = y[joints:]
+        n = len(joints)
+        ca[joints] = y[:n]
+        cb[joints] = y[n:]
         comm.send_commands(ca, cb)
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
