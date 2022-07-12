@@ -140,7 +140,7 @@ def create_sin_trajectory(
 
     def dqdes_func(t: float) -> np.ndarray:
         dq = np.zeros((len(q0),))
-        dq[joint] = A * T * np.cos(2.0 * np.pi * t / T) / (2.0 * np.pi)
+        dq[joint] = 2.0 * np.pi * A * np.cos(2.0 * np.pi * t / T) / T
         return dq
 
     return qdes_func, dqdes_func
