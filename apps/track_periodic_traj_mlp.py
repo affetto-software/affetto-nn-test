@@ -27,14 +27,20 @@ DEFAULT_BIAS = 50.0
 class Loader(LoaderBase):
     @staticmethod
     def reshape(
-        j: int,
+        joints: int | list[int],
         data: pd.DataFrame,
         data_for_predict: pd.DataFrame,
         data_for_control: pd.DataFrame,
     ) -> tuple[np.ndarray, np.ndarray]:
-        desired = data_for_predict[[f"q{j}", f"dq{j}"]]
-        states = data[[f"q{j}", f"dq{j}", f"pa{j}", f"pb{j}"]]
-        ctrl = data_for_control[[f"ca{j}", f"cb{j}"]]
+        labels = Loader.labels
+        desired = data_for_predict[labels("q", joints) + labels("dq", joints)]
+        states = data[
+            labels("q", joints)
+            + labels("dq", joints)
+            + labels("pa", joints)
+            + labels("pb", joints)
+        ]
+        ctrl = data_for_control[labels("ca", joints) + labels("cb", joints)]
         df_X = pd.concat([desired, states], axis=1)
         df_y = ctrl
         return df_X.to_numpy(), df_y.to_numpy()
@@ -80,16 +86,10 @@ def prepare_ctrl(
     return comm, ctrl, state
 
 
-def prepare_output_directory(output_directory: str | Path) -> Path:
-    if output_directory is None:
-        raise RuntimeError("Output directory is required.")
-    path = Path(output_directory)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def prepare_logger(dof: int) -> Logger:
-    logger = Logger()
+def prepare_logger(dof: int, output: str | Path) -> Logger:
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    logger = Logger(output_path)
     logger.set_labels(
         "t",
         # raw data
@@ -193,7 +193,9 @@ def control(
         comm.send_commands(ca, cb)
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
+        print(f"\rt = {t:.2f} / {duration:.2f}", end="")
         timer.block()
+    print()
     if logger is not None:
         logger.dump()
 
@@ -237,7 +239,9 @@ def control_reg(
         comm.send_commands(ca, cb)
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
+        print(f"\rt = {t:.2f} / {duration:.2f}", end="")
         timer.block()
+    print()
     if logger is not None:
         logger.dump()
 
@@ -260,8 +264,7 @@ def mainloop(args: argparse.Namespace, reg: Pipeline):
     comm, ctrl, state = prepare_ctrl(args.config, args.sfreq, args.cfreq)
 
     # Prepare logger.
-    logger = prepare_logger(ctrl.dof)
-    logger.set_filename(args.output)
+    logger = prepare_logger(ctrl.dof, args.output)
 
     # Get initial pose.
     q0 = state.q
@@ -271,26 +274,32 @@ def mainloop(args: argparse.Namespace, reg: Pipeline):
     T = args.period
     b = args.bias
 
-    # Get back to home position.
-    print("Getting back to home position...")
-    qdes_func, dqdes_func = TRAJECTORY["const"](A, T, b, args.joint, q0)
-    control(comm, ctrl, state, qdes_func, dqdes_func, 3)
+    try:
+        # Get back to home position.
+        print("Getting back to home position...")
+        qdes_func, dqdes_func = TRAJECTORY["const"](A, T, b, args.joint, q0)
+        control(comm, ctrl, state, qdes_func, dqdes_func, 3)
 
-    # Track a periodic trajectory.
-    time_offset = args.n_predict * ctrl.dt
-    qdes_func, dqdes_func = TRAJECTORY[args.traj_type](A, T, b, args.joint, q0)
-    control_reg(
-        reg,
-        comm,
-        ctrl,
-        state,
-        args.joint,
-        qdes_func,
-        dqdes_func,
-        args.duration,
-        time_offset,
-        logger,
-    )
+        # Track a periodic trajectory.
+        time_offset = args.n_predict * ctrl.dt
+        qdes_func, dqdes_func = TRAJECTORY[args.traj_type](A, T, b, args.joint, q0)
+        control_reg(
+            reg,
+            comm,
+            ctrl,
+            state,
+            args.joint,
+            qdes_func,
+            dqdes_func,
+            args.duration,
+            time_offset,
+            logger,
+        )
+    finally:
+        print("Quitting...")
+        comm.close_command_socket()
+        time.sleep(0.1)
+        state.join()
 
 
 def parse():
@@ -326,6 +335,7 @@ def parse():
     )
     parser.add_argument("-o", "--output", help="output filename")
     parser.add_argument(
+        "-j",
         "--joint",
         required=True,
         nargs="+",
@@ -358,6 +368,7 @@ def parse():
     parser.add_argument(
         "-D",
         "--time-duration",
+        dest="duration",
         default=DEFAULT_DURATION,
         type=float,
         help="Time duration to execute.",
@@ -365,7 +376,6 @@ def parse():
     parser.add_argument(
         "-a",
         "--amplitude",
-        nargs="+",
         default=DEFAULT_AMPLITUDE,
         type=float,
         help="Amplitude list for reference trajectory.",
@@ -373,7 +383,6 @@ def parse():
     parser.add_argument(
         "-p",
         "--period",
-        nargs="+",
         default=DEFAULT_PERIOD,
         type=float,
         help="Period list for reference trajectory.",
@@ -381,7 +390,6 @@ def parse():
     parser.add_argument(
         "-b",
         "--bias",
-        nargs="+",
         default=DEFAULT_BIAS,
         type=float,
         help="Bias list for reference trajectory.",
