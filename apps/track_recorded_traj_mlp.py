@@ -75,13 +75,6 @@ class Spline:
 
 
 class Loader(LoaderBase):
-    @classmethod
-    def labels(cls, label: str, joints: int | list[int]) -> list[str]:
-        if not isinstance(joints, Iterable):
-            joints = [joints]
-        labels = [label + str(i) for i in joints]
-        return labels
-
     @staticmethod
     def reshape(
         joints: int | list[int],
@@ -89,15 +82,15 @@ class Loader(LoaderBase):
         data_for_predict: pd.DataFrame,
         data_for_control: pd.DataFrame,
     ) -> tuple[np.ndarray, np.ndarray]:
-        labels_q = Loader.labels("q", joints)
-        labels_dq = Loader.labels("dq", joints)
-        labels_pa = Loader.labels("pa", joints)
-        labels_pb = Loader.labels("pb", joints)
-        labels_ca = Loader.labels("ca", joints)
-        labels_cb = Loader.labels("cb", joints)
-        desired = data_for_predict[labels_q + labels_dq]
-        states = data[labels_q + labels_dq + labels_pa + labels_pb]
-        ctrl = data_for_control[labels_ca + labels_cb]
+        labels = Loader.labels
+        desired = data_for_predict[labels("q", joints) + labels("dq", joints)]
+        states = data[
+            labels("q", joints)
+            + labels("dq", joints)
+            + labels("pa", joints)
+            + labels("pb", joints)
+        ]
+        ctrl = data_for_control[labels("ca", joints) + labels("cb", joints)]
         df_X = pd.concat([desired, states], axis=1)
         df_y = ctrl
         return df_X.to_numpy(), df_y.to_numpy()
@@ -143,16 +136,10 @@ def prepare_ctrl(
     return comm, ctrl, state
 
 
-def prepare_output_directory(output_directory: str | Path) -> Path:
-    if output_directory is None:
-        raise RuntimeError("Output directory is required.")
-    path = Path(output_directory)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def prepare_logger(dof: int) -> Logger:
-    logger = Logger()
+def prepare_logger(dof: int, output: str | Path) -> Logger:
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    logger = Logger(output_path)
     logger.set_labels(
         "t",
         # raw data
@@ -219,7 +206,9 @@ def control(
         comm.send_commands(ca, cb)
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
+        print(f"\rt = {t:.2f} / {duration:.2f}", end="")
         timer.block()
+    print()
     if logger is not None:
         logger.dump()
 
@@ -271,7 +260,9 @@ def control_reg(
         comm.send_commands(ca, cb)
         if logger is not None:
             logger.store(t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes)
+        print(f"\rt = {t:.2f} / {duration:.2f}", end="")
         timer.block()
+    print()
     if logger is not None:
         logger.dump()
 
@@ -281,45 +272,50 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
     comm, ctrl, state = prepare_ctrl(args.config, args.sfreq, args.cfreq)
 
     # Prepare logger.
-    logger = prepare_logger(ctrl.dof)
-    logger.set_filename(args.output)
+    logger = prepare_logger(ctrl.dof, args.output)
 
     # Get initial pose.
     q0 = state.q
 
-    # Get back to home position.
-    print("Getting back to home position...")
-    qdes_func, dqdes_func = create_const_trajectory(50, args.joint, q0)
-    control(comm, ctrl, state, qdes_func, dqdes_func, 3)
+    try:
+        # Get back to home position.
+        print("Getting back to home position...")
+        qdes_func, dqdes_func = create_const_trajectory(50, args.joint, q0)
+        control(comm, ctrl, state, qdes_func, dqdes_func, 3)
 
-    # Track the recorded trajectory.
-    time_offset = args.n_predict * ctrl.dt
-    spline = Spline(args.record_data, args.joint)
-    qdes_func = spline.get_qdes_func(q0)
-    dqdes_func = spline.get_dqdes_func(q0)
-    if reg is None:
-        control(
-            comm,
-            ctrl,
-            state,
-            qdes_func,
-            dqdes_func,
-            args.duration,
-            logger=logger,
-        )
-    else:
-        control_reg(
-            reg,
-            comm,
-            ctrl,
-            state,
-            args.joint,
-            qdes_func,
-            dqdes_func,
-            args.duration,
-            time_offset,
-            logger=logger,
-        )
+        # Track the recorded trajectory.
+        time_offset = args.n_predict * ctrl.dt
+        spline = Spline(args.record_data, args.joint)
+        qdes_func = spline.get_qdes_func(q0)
+        dqdes_func = spline.get_dqdes_func(q0)
+        if reg is None:
+            control(
+                comm,
+                ctrl,
+                state,
+                qdes_func,
+                dqdes_func,
+                args.duration,
+                logger=logger,
+            )
+        else:
+            control_reg(
+                reg,
+                comm,
+                ctrl,
+                state,
+                args.joint,
+                qdes_func,
+                dqdes_func,
+                args.duration,
+                time_offset,
+                logger=logger,
+            )
+    finally:
+        print("Quitting...")
+        comm.close_command_socket()
+        time.sleep(0.1)
+        state.join()
 
 
 def parse():
@@ -365,6 +361,7 @@ def parse():
     )
     parser.add_argument("-o", "--output", help="output filename")
     parser.add_argument(
+        "-j",
         "--joint",
         required=True,
         nargs="+",
