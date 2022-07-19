@@ -191,7 +191,7 @@ def plot(
             warnings.warn(
                 f"No data files found in {str(data_dir)} (pattern: {pattern})"
             )
-        suffix = f" (A={A}, T={T}, b={b})"
+        suffix = f" (j={j}, A={A}, T={T}, b={b})"
         plot_q(data_list, j, "Joint angle" + suffix, **sfparam)
         plot_dq(data_list, j, "Joint velocity" + suffix, **sfparam)
         plot_pressure(data_list, j, "Pressure at actuator" + suffix, **sfparam)
