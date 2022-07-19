@@ -7,15 +7,13 @@ TRAIN_DATA_SET_A=("$HOME/Dropbox/develop/data/20220712/data_joints-2-3-4-5")
 TRAIN_DATA_SET_B=("${TRAIN_DATA_SET_A[@]}" "$HOME/Dropbox/develop/data/20220719/data_joints-2-3-4-5_time-1-2")
 TRAIN_DATA_SET_C=("${TRAIN_DATA_SET_B[@]}" "$HOME/Dropbox/develop/data/20220719/data_joints-2-3-4-5_time-2-4")
 TEST_DATA_BASE="$HOME/Dropbox/develop/data/20220719/test_data_joints-5"
-# TEST_DATA_SET=("${TEST_DATA_BASE}/sin_joint-5_A-40.0_T-5.0_b-50.0_00.csv" "${TEST_DATA_BASE}/step_joint-5_A-40.0_T-5.0_b-50.0_00.csv")
-TEST_DATA_SET=("${TEST_DATA_BASE}/sin_joint-5_A-40.0_T-5.0_b-50.0_00.csv")
+TEST_DATA_SET=("${TEST_DATA_BASE}/sin_joint-5_A-40.0_T-5.0_b-50.0_00.csv" "${TEST_DATA_BASE}/step_joint-5_A-40.0_T-5.0_b-50.0_00.csv")
 TEST_TRAJ_LABELS=("sin" "step")
 OUTPUT_BASE="$HOME/Dropbox/develop/data/20220719/predict_ctrl_input_mlp"
 
 
 JOINT=(5)
-# N_PREDICT=(1 3 5 7 10 15 20 30)
-N_PREDICT=(10)
+N_PREDICT=(1 3 5 7 10 15 20 30)
 SCALER=("minmax")
 LOG="${OUTPUT_BASE}/${NOW}.log"
 
