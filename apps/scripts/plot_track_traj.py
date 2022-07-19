@@ -45,7 +45,8 @@ def plot_command(data, joints, **sfparam):
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "command"
+        joints_str = "-".join(str(i) for i in joints)
+        sfparam["filename"] = f"command-{joints_str}"
     savefig(fig, **sfparam)
 
 
@@ -62,7 +63,8 @@ def plot_pressure(data, joints, **sfparam):
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "pressure"
+        joints_str = "-".join(str(i) for i in joints)
+        sfparam["filename"] = f"pressure-{joints_str}"
     savefig(fig, **sfparam)
 
 
@@ -103,7 +105,8 @@ def plot_pressure_command(data, joints, **sfparam):
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "pressure_command"
+        joints_str = "-".join(str(i) for i in joints)
+        sfparam["filename"] = f"pressure_command-{joints_str}"
     savefig(fig, **sfparam)
 
 
@@ -120,7 +123,8 @@ def plot_q(data, joints, **sfparam):
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "q"
+        joints_str = "-".join(str(i) for i in joints)
+        sfparam["filename"] = f"q-{joints_str}"
     savefig(fig, **sfparam)
 
 
@@ -137,7 +141,8 @@ def plot_dq(data, joints, **sfparam):
     }
     ax.set(**pparam)
     if sfparam.get("filename", None) is None:
-        sfparam["filename"] = "dq"
+        joints_str = "-".join(str(i) for i in joints)
+        sfparam["filename"] = f"dq-{joints_str}"
     savefig(fig, **sfparam)
 
 
@@ -182,11 +187,13 @@ def main():
         args.joint = [11]
 
     data = Data(args.data)
-    # plot_command(data, args.joint, **sfparam)
-    # plot_pressure(data, args.joint, **sfparam)
-    plot_pressure_command(data, args.joint, **sfparam)
-    plot_q(data, args.joint, **sfparam)
-    plot_dq(data, args.joint, **sfparam)
+    for j in args.joint:
+        joint = [j]
+        # plot_command(data, joint, **sfparam)
+        # plot_pressure(data, joint, **sfparam)
+        plot_pressure_command(data, joint, **sfparam)
+        plot_q(data, joint, **sfparam)
+        plot_dq(data, joint, **sfparam)
     if not args.noshow:
         plt.show()
 
