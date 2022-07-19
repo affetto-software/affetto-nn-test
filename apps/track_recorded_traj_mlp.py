@@ -163,12 +163,13 @@ def prepare_logger(dof: int, output: str | Path) -> Logger:
 
 
 def create_const_trajectory(
-    qdes: float, joint: int | list[int], q0: np.ndarray
+    qdes: float | None, joint: int | list[int] | None, q0: np.ndarray
 ) -> tuple[Callable[[float], np.ndarray], Callable[[float], np.ndarray]]:
     def qdes_func(_: float) -> np.ndarray:
         q = np.copy(q0)
         q[0] = 50  # make waist joint keep at middle.
-        q[joint] = qdes
+        if qdes is not None and joint is not None:
+            q[joint] = qdes
         return q
 
     def dqdes_func(_: float) -> np.ndarray:
@@ -219,7 +220,7 @@ def control_reg(
     comm: AffComm,
     ctrl: AffPosCtrl,
     state: AffStateThread,
-    joints: int | list[int],
+    joints: list[int],
     qdes_func: Callable[[float], np.ndarray],
     dqdes_func: Callable[[float], np.ndarray],
     duration: float,
@@ -284,15 +285,18 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
     spline = Spline(args.record_data, args.joint)
 
     try:
+        # Get the recorded trajectory.
+        qdes_func = spline.get_qdes_func(q0)
+        dqdes_func = spline.get_dqdes_func(q0)
+        q0 = qdes_func(0)
+
         # Get back to home position.
         print("Getting back to home position...")
-        qdes_func, dqdes_func = create_const_trajectory(50, args.joint, q0)
+        qdes_func, dqdes_func = create_const_trajectory(None, None, q0)
         control(comm, ctrl, state, qdes_func, dqdes_func, 3)
 
         # Track the recorded trajectory.
         time_offset = args.n_predict * ctrl.dt
-        qdes_func = spline.get_qdes_func(q0)
-        dqdes_func = spline.get_dqdes_func(q0)
         if reg is None:
             control(
                 comm,
