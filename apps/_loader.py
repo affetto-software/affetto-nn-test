@@ -61,8 +61,9 @@ class LoaderBase(ABC):
         elif isinstance(directory_path, Sequence):
             directory_path_list = directory_path
         else:
-            RuntimeError(f"{str(directory_path)} cannot be handled")
+            raise RuntimeError(f"{str(directory_path)} cannot be handled")
 
+        data_files = []
         for path in directory_path_list:
             path = Path(path)
             if path.is_dir():
@@ -70,7 +71,7 @@ class LoaderBase(ABC):
             elif path.is_file():
                 data_files = [str(path)]
             else:
-                RuntimeError(f"{str(path)} must be directory or file")
+                raise RuntimeError(f"{str(path)} must be directory or file")
 
         X, y = np.empty(shape=(0, 6), dtype=float), np.empty(shape=(0, 2), dtype=float)
         notfound = True
