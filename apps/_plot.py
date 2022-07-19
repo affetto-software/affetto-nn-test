@@ -56,8 +56,8 @@ def plot_prediction(
     if not isinstance(index, Iterable):
         index = [index]
     for i in index:
-        ax.plot(y_test[:, i], label="test")
-        ax.plot(y_predict[:, i], label="predict")
+        (line,) = ax.plot(y_test[:, i], ls="--", label="expected")
+        ax.plot(y_predict[:, i], c=line.get_color(), ls="-", label="predict")
     if title is not None:
         ax.set_title(title)
     ax.legend()
