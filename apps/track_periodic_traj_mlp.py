@@ -325,10 +325,12 @@ def parse():
     )
     parser.add_argument(
         "--train-data",
+        nargs="+",
         help="Path to directory where train data files are stored.",
     )
     parser.add_argument(
         "--test-data",
+        nargs="+",
         help="Path to directory where test data files are stored.",
     )
     parser.add_argument(

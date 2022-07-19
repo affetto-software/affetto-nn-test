@@ -69,11 +69,13 @@ def parse():
     parser.add_argument(
         "--train-data",
         required=True,
+        nargs="+",
         help="Path to directory where train data files are stored.",
     )
     parser.add_argument(
         "--test-data",
         required=True,
+        nargs="+",
         help="Path to directory where test data files are stored.",
     )
     parser.add_argument("--joint", required=True, type=int, help="Joint index to move.")

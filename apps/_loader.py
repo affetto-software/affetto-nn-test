@@ -1,7 +1,7 @@
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -51,12 +51,27 @@ class LoaderBase(ABC):
         data_for_control = data_for_control.reset_index(drop=True)
         return self.reshape(self._joint, data, data_for_predict, data_for_control)
 
-    def load(self, directory_path: Path | str) -> tuple[np.ndarray, np.ndarray]:
+    def load(
+        self, directory_path: Path | str | Sequence[Path] | Sequence[str]
+    ) -> tuple[np.ndarray, np.ndarray]:
         print("loading...")
-        directory_path = Path(directory_path)
-        if not directory_path.is_dir():
-            RuntimeError(f"{str(directory_path)} must be directory")
-        data_files = directory_path.glob("*.csv")
+
+        if isinstance(directory_path, (str | Path)):
+            directory_path_list = [Path(directory_path)]
+        elif isinstance(directory_path, Sequence):
+            directory_path_list = directory_path
+        else:
+            RuntimeError(f"{str(directory_path)} cannot be handled")
+
+        for path in directory_path_list:
+            path = Path(path)
+            if path.is_dir():
+                data_files = path.glob("*.csv")
+            elif path.is_file():
+                data_files = [str(path)]
+            else:
+                RuntimeError(f"{str(path)} must be directory or file")
+
         X, y = np.empty(shape=(0, 6), dtype=float), np.empty(shape=(0, 2), dtype=float)
         notfound = True
         for data_file in data_files:
