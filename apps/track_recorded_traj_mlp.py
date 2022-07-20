@@ -297,6 +297,8 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
 
         # Track the recorded trajectory.
         time_offset = args.n_predict * ctrl.dt
+        qdes_func = spline.get_qdes_func(q0)
+        dqdes_func = spline.get_dqdes_func(q0)
         if reg is None:
             control(
                 comm,
