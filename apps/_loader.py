@@ -57,7 +57,7 @@ class LoaderBase(ABC):
         print("loading...")
 
         if isinstance(directory_path, (str | Path)):
-            directory_path_list = [Path(directory_path)]
+            directory_path_list = [directory_path]
         elif isinstance(directory_path, Sequence):
             directory_path_list = directory_path
         else:
@@ -69,7 +69,7 @@ class LoaderBase(ABC):
             if path.is_dir():
                 data_files = path.glob("*.csv")
             elif path.is_file():
-                data_files = [str(path)]
+                data_files = [path]
             else:
                 raise RuntimeError(f"{str(path)} must be directory or file")
 
