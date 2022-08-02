@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.pipeline import Pipeline
 
+from model import ESN
+
 sfparam_tmpl = {
     "time": None,
     "savefig": False,
@@ -44,14 +46,17 @@ def convert_args_to_sfparam(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def plot_prediction(
-    reg: Pipeline,
+    reg: Pipeline | ESN,
     X_test: np.ndarray,
     y_test: np.ndarray,
     index: int | Iterable[int] = 0,
     title: str | None = None,
     **sfparam,
 ) -> None:
-    y_predict = reg.predict(X_test)
+    if isinstance(reg, ESN):
+        y_predict = reg.predict(X_test)
+    else:
+        y_predict = reg.predict(X_test)
     fig, ax = plt.subplots()
     if not isinstance(index, Iterable):
         index = [index]
