@@ -21,9 +21,6 @@ from _plot import convert_args_to_sfparam, plot_prediction
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]
 DEFAULT_DURATION = 20.0  # sec
-DEFAULT_AMPLITUDE = 40.0
-DEFAULT_PERIOD = 5.0
-DEFAULT_BIAS = 50.0
 
 
 class Spline:
@@ -331,7 +328,7 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
 
 def parse():
     parser = argparse.ArgumentParser(
-        description="Make robot track periodic trajectory using MLPRegressor"
+        description="Make robot track recorded trajectory using MLPRegressor"
     )
     parser.add_argument(
         "--record-data",
