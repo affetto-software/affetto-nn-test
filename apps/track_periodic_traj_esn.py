@@ -9,10 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
 
-from _fit import fit_data
 from _loader import LoaderBase
 from _plot import convert_args_to_sfparam, plot_prediction
 from model import ESN, Tikhonov
@@ -48,7 +45,7 @@ class Loader(LoaderBase):
 
 
 def fit(
-    args: argparse.Namespace,
+    _: argparse.Namespace,
     X_train: np.ndarray,
     y_train: np.ndarray,
     params: dict[str, Any],
