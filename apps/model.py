@@ -273,13 +273,17 @@ class ESN:
             return np.array(Y_pred), X
         return np.array(Y_pred)
 
-    def run(self, U):
+    def run(self, U, warmup=0):
         test_len = len(U)
         Y_pred = []
-        y = U[0]
+        y = U[warmup]
 
-        for _ in range(test_len):
-            x_in = self.Input(y)
+        for n in range(test_len):
+            if n >= warmup:
+                u = y
+            else:
+                u = np.zeros(y.shape)
+            x_in = self.Input(u)
 
             if self.Feedback is not None:
                 x_back = self.Feedback(self.y_prev)
@@ -375,7 +379,7 @@ class reBASICS:
         #         return False
         # return True
 
-    def resample_inactive_module(self, U, threshold=0.01, span=(0, None)):
+    def resample_inactive_module(self, U, threshold=0.01, span=(0.0, None)):
         for i, r in enumerate(self.Reservoirs):
             while not self._is_active(r, U, threshold, span):
                 r.resample_connection()
@@ -407,10 +411,11 @@ class reBASICS:
 
         return np.array(Y_pred), np.array(Wout_abs_mean)
 
-    def predict(self, U, return_X=False):
+    def predict(self, U, return_X=False, warmup=0):
         test_len = len(U)
         Y_pred = []
         X = np.empty((0, self.N_module))
+        _ = warmup
 
         for n in range(test_len):
             x_in = self.Input(U[n])
@@ -428,6 +433,278 @@ class reBASICS:
             return np.array(Y_pred), X
         return np.array(Y_pred)
 
+    def run(self, U, warmup=0):
+        return self.predict(U, warmup=warmup)
+
     def reset_reservoir_state(self, randomize_initial_state=False):
         for r in self.Reservoirs:
             r.reset_reservoir_state(randomize_initial_state)
+
+
+class reBASICSwithDirectConnect(reBASICS):
+    def __init__(
+        self,
+        N_u,
+        N_y,
+        N_x,
+        N_module,
+        density=0.05,
+        input_scale=1.0,
+        direct_input_scale=1.0,
+        rho=0.95,
+        activation_func=np.tanh,
+        noise_level=None,
+        leaking_rate=1.0,
+        output_func=identity,
+        inv_output_func=identity,
+    ):
+        super(reBASICSwithDirectConnect, self).__init__(
+            N_u,
+            N_y,
+            N_x,
+            N_module,
+            density,
+            input_scale,
+            rho,
+            activation_func,
+            noise_level,
+            leaking_rate,
+            output_func,
+            inv_output_func,
+        )
+        self.DirectInput = Input(N_y, N_y, direct_input_scale)
+        self.Output = Output(N_module + N_y, N_y)
+
+    def adapt(self, U, D, optimizer, warmup=-1):
+        data_len = len(U)
+        Y_pred = []
+        Wout_abs_mean = []
+
+        Wout = optimizer.Wout
+        assert self.N_u + self.N_y == U.shape[1]
+        for n in np.arange(0, data_len, 1):
+            u1 = U[n][: self.N_u]
+            u2 = U[n][self.N_u :]
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.DirectInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = x_in2
+            x = np.concatenate((x1, x2))
+            d = D[n]
+            d = self.inv_output_func(d)
+
+            if n > warmup:
+                Wout = optimizer(d, x)
+
+            y = np.dot(Wout, x)
+            Y_pred.append(y)
+            Wout_abs_mean.append(np.mean(np.abs(Wout)))
+
+        self.Output.setweight(Wout)
+
+        return np.array(Y_pred), np.array(Wout_abs_mean)
+
+    def predict(self, U, return_X=False):
+        test_len = len(U)
+        Y_pred = []
+        X = np.empty((0, self.N_module + self.N_y))
+
+        for n in range(test_len):
+            u1 = U[n][: self.N_u]
+            u2 = U[n][self.N_u :]
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.DirectInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = x_in2
+            x = np.concatenate((x1, x2))
+            X = np.vstack((X, x))
+
+            y_pred = self.Output(x)
+            Y_pred.append(self.output_func(y_pred))
+            self.y_prev = y_pred
+
+        if return_X:
+            return np.array(Y_pred), X
+        return np.array(Y_pred)
+
+    def run(self, U, warmup=0):
+        test_len = len(U)
+        Y_pred = []
+        X = np.empty((0, self.N_module + self.N_y))
+        y = U[warmup][self.N_u :]
+
+        for n in range(test_len):
+            u1 = U[n][: self.N_u]
+            if n >= warmup:
+                u2 = y
+            else:
+                u2 = np.zeros(y.shape)
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.DirectInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = x_in2
+            x = np.concatenate((x1, x2))
+            X = np.vstack((X, x))
+
+            y_pred = self.Output(x)
+            Y_pred.append(self.output_func(y_pred))
+            y = y_pred
+            self.y_prev = y
+
+        return np.array(Y_pred)
+
+
+class reBASICSwithReservoir(reBASICS):
+    def __init__(
+        self,
+        N_u,
+        N_y,
+        N_x,
+        N_module,
+        N_x_res,
+        density=0.05,
+        density_res=0.05,
+        input_scale=1.0,
+        input_scale_res=1.0,
+        rho=0.95,
+        rho_res=0.95,
+        activation_func=np.tanh,
+        noise_level=None,
+        leaking_rate=1.0,
+        output_func=identity,
+        inv_output_func=identity,
+    ):
+        super(reBASICSwithReservoir, self).__init__(
+            N_u,
+            N_y,
+            N_x,
+            N_module,
+            density,
+            input_scale,
+            rho,
+            activation_func,
+            noise_level,
+            leaking_rate,
+            output_func,
+            inv_output_func,
+        )
+        self.N_x_res = N_x_res
+        self.ReservoirInput = Input(N_y, N_x_res, input_scale_res)
+        self.Reservoir = Reservoir(
+            N_x_res, density_res, rho_res, activation_func, leaking_rate
+        )
+        self.Output = Output(N_module + N_x_res, N_y)
+
+    def adapt(self, U, D, optimizer, warmup=-1):
+        data_len = len(U)
+        Y_pred = []
+        Wout_abs_mean = []
+
+        Wout = optimizer.Wout
+        assert self.N_u + self.N_y == U.shape[1]
+        for n in np.arange(0, data_len, 1):
+            u1 = U[n][: self.N_u]
+            u2 = U[n][self.N_u :]
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.ReservoirInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = self.Reservoir(x_in2)
+            x = np.concatenate((x1, x2))
+            d = D[n]
+            d = self.inv_output_func(d)
+
+            if n > warmup:
+                Wout = optimizer(d, x)
+
+            y = np.dot(Wout, x)
+            Y_pred.append(y)
+            Wout_abs_mean.append(np.mean(np.abs(Wout)))
+
+        self.Output.setweight(Wout)
+
+        return np.array(Y_pred), np.array(Wout_abs_mean)
+
+    def predict(self, U, return_X=False):
+        test_len = len(U)
+        Y_pred = []
+        X = np.empty((0, self.N_module + self.N_x_res))
+
+        for n in range(test_len):
+            u1 = U[n][: self.N_u]
+            u2 = U[n][self.N_u :]
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.ReservoirInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = self.Reservoir(x_in2)
+            x = np.concatenate((x1, x2))
+            X = np.vstack((X, x))
+
+            y_pred = self.Output(x)
+            Y_pred.append(self.output_func(y_pred))
+            self.y_prev = y_pred
+
+        if return_X:
+            return np.array(Y_pred), X
+        return np.array(Y_pred)
+
+    def run(self, U, warmup=0):
+        test_len = len(U)
+        Y_pred = []
+        X = np.empty((0, self.N_module + self.N_x_res))
+        y = U[warmup][self.N_u :]
+
+        for n in range(test_len):
+            u1 = U[n][: self.N_u]
+            if n >= warmup:
+                u2 = y
+            else:
+                u2 = np.zeros(y.shape)
+            # x_in = self.Input(U[n])
+            x_in1 = self.Input(u1)
+            if self.noise_level:
+                x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
+            states = [r(x_in1) for r in self.Reservoirs]
+            x1 = np.array([s[0] for s in states])
+            x_in2 = self.ReservoirInput(u2)
+            if self.noise_level:
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+            x2 = self.Reservoir(x_in2)
+            x = np.concatenate((x1, x2))
+            X = np.vstack((X, x))
+
+            y_pred = self.Output(x)
+            Y_pred.append(self.output_func(y_pred))
+            y = y_pred
+            self.y_prev = y
+
+        return np.array(Y_pred)
