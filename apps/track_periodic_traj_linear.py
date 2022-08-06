@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -455,6 +456,7 @@ def parse():
     parser.add_argument(
         "-x", "--noshow", action="store_true", help="do not show figures if specified"
     )
+    parser.add_argument("-m", "--model", help="path to saved model")
     return parser.parse_args()
 
 
@@ -472,7 +474,11 @@ def main():
     if args.ctrl == "linear":
         loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
         X_train, y_train = loader.load(args.train_data)
-        reg = fit(args, X_train, y_train, params)
+        if args.model is None:
+            reg = fit(args, X_train, y_train, params)
+            joblib.dump(reg, "model.joblib")
+        else:
+            reg = joblib.load(args.model)
         if args.test_data is not None:
             X_test, y_test = loader.load(args.test_data)
             plot(args, reg, X_test, y_test, sfparam)
