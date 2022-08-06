@@ -442,7 +442,7 @@ def parse():
     )
     parser.add_argument(
         "--leaking-rate",
-        default="1.0",
+        default=1.0,
         type=float,
         help="Leaking rate of the neurons.",
     )
