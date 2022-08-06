@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import re
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -10,66 +9,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
-from scipy import interpolate
-from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 
 from _fit import fit_data
 from _loader import LoaderBase
 from _plot import convert_args_to_sfparam, plot_prediction
+from track_recorded_traj_mlp import Spline
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]
 DEFAULT_DURATION = 20.0  # sec
-
-
-class Spline:
-    _fpath: Path
-    _data: pd.DataFrame
-    _dof: int
-    _joints: list[int]
-    _tck: list[tuple]
-    _der: list[Any]
-
-    def __init__(self, fpath: str | Path, joints: list[int] | None = None) -> None:
-        self._fpath = Path(fpath)
-        self._data = pd.read_csv(self._fpath)  # type: ignore
-        self.find_dof()
-        self._joints = joints if joints is not None else list(range(self._dof))
-        self.find_spline()
-
-    def find_dof(self, data: pd.DataFrame | None = None) -> int:
-        if data is None:
-            data = self._data
-        r = re.compile(r"rq\d+")
-        self._dof = len(list(filter(r.match, data.columns.values)))
-        return self._dof
-
-    def find_spline(self) -> None:
-        x = self._data["t"].to_numpy()
-        self._tck = []
-        self._der = []
-        for q_i in self._joints:
-            y = self._data[f"rq{q_i}"].to_numpy()
-            tck = interpolate.splrep(x, y)
-            self._tck.append(tck)
-            self._der.append(interpolate.splder(tck))
-
-    def get_qdes_func(self, q0: np.ndarray) -> Callable[[float], np.ndarray]:
-        def qdes_func(t: float) -> np.ndarray:
-            q = q0.copy()
-            q[self._joints] = [interpolate.splev(t, tck) for tck in self._tck]
-            return q
-
-        return qdes_func
-
-    def get_dqdes_func(self, q0: np.ndarray) -> Callable[[float], np.ndarray]:
-        def dqdes_func(t: float) -> np.ndarray:
-            dq = np.zeros(q0.shape)
-            dq[self._joints] = [interpolate.splev(t, der) for der in self._der]
-            return dq
-
-        return dqdes_func
 
 
 class Loader(LoaderBase):
@@ -100,7 +50,7 @@ def fit(
     y_train: np.ndarray,
     params: dict[str, Any],
 ) -> Pipeline:
-    return fit_data(X_train, y_train, args.scaler, MLPRegressor, params)
+    return fit_data(X_train, y_train, args.scaler, LinearRegression, params)
 
 
 def plot(
@@ -328,7 +278,7 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
 
 def parse():
     parser = argparse.ArgumentParser(
-        description="Make robot track recorded trajectory using MLPRegressor"
+        description="Make robot track recorded trajectory using LinearRegression"
     )
     parser.add_argument(
         "--record-data",
@@ -337,8 +287,8 @@ def parse():
     )
     parser.add_argument(
         "--ctrl",
-        choices=["pid", "mlp"],
-        default="mlp",
+        choices=["pid", "linear"],
+        default="linear",
         help="Controller type to be executed.",
     )
     parser.add_argument(
@@ -410,59 +360,28 @@ def parse():
         help="Time duration to execute.",
     )
     parser.add_argument(
-        "--hidden-layer-sizes",
-        default=(100,),
-        nargs="+",
-        type=int,
-        help="The ith element represents the number of neurons in the ith hidden layer.",
-    )
-    parser.add_argument(
-        "--activation",
-        choices=["identity", "logistic", "tanh", "relu"],
-        default="relu",
-        help="Activation function for the hidden layer.",
-    )
-    parser.add_argument(
-        "--solver",
-        choices=["lbfgs", "sgd", "adam"],
-        default="adam",
-        help="The solver for weight optimization.",
-    )
-    parser.add_argument(
-        "--alpha",
-        default=0.0001,
-        type=float,
-        help="Strength of the L2 regularization term.",
-    )
-    parser.add_argument(
-        "--learning-rate",
-        choices=["constant", "invscaling", "adaptive"],
-        default="constant",
-        help="Learning rate schedule for weight updates.",
-    )
-    parser.add_argument(
-        "--learning-rate-init",
-        default=0.001,
-        type=float,
-        help="The initial learning rate used.",
-    )
-    parser.add_argument(
-        "--max-iter",
-        default=200,
-        type=int,
-        help="Maximum number of iterations.",
-    )
-    parser.add_argument(
-        "--momentum",
-        default=0.9,
-        type=float,
-        help="Momentum for gradient descent update. Should be between 0 and 1.",
-    )
-    parser.add_argument(
-        "--nesterovs-momentum",
+        "--fit-intercept",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Whether to use Nesterov’s momentum.",
+        help="Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered).",
+    )
+    parser.add_argument(
+        "--copy-X",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="If True, X will be copied; else, it may be overwritten.",
+    )
+    parser.add_argument(
+        "--n-jobs",
+        default=None,
+        type=int,
+        help="The number of jobs to use for the computation. This will only provide speedup in case of sufficiently large problems, that is if firstly n_targets > 1 and secondly X is sparse or if positive is set to True. None means 1 unless in a joblib.parallel_backend context. -1 means using all processors. See Glossary for more details.",
+    )
+    parser.add_argument(
+        "--positive",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="When set to True, forces the coefficients to be positive. This option is only supported for dense arrays.",
     )
     parser.add_argument(
         "-d", "--basedir", default="fig", help="directory where figures will be saved"
@@ -488,20 +407,8 @@ def parse():
 
 def convert_args_to_reg_params(args):
     args_dict = vars(args).copy()
-    keys = [
-        "hidden_layer_sizes",
-        "activation",
-        "solver",
-        "alpha",
-        "learning_rate",
-        "learning_rate_init",
-        "max_iter",
-        "momentum",
-        "nesterovs_momentum",
-    ]
+    keys = ["fit_intercept", "copy_X", "n_jobs"]
     params = {k: args_dict[k] for k in keys}
-    v = params["hidden_layer_sizes"]
-    params["hidden_layer_sizes"] = tuple(v)
     return params
 
 
@@ -509,7 +416,7 @@ def main():
     args = parse()
     params = convert_args_to_reg_params(args)
     sfparam = convert_args_to_sfparam(args)
-    if args.ctrl == "mlp":
+    if args.ctrl == "linear":
         loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
         X_train, y_train = loader.load(args.train_data)
         reg = fit(args, X_train, y_train, params)
