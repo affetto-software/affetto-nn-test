@@ -25,6 +25,9 @@ DEFAULT_PERIOD = 5.0
 DEFAULT_BIAS = 50.0
 
 
+np.random.seed(seed=0)
+
+
 class Loader(LoaderBase):
     @staticmethod
     def reshape(
