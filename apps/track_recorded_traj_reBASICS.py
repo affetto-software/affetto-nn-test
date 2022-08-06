@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -540,6 +541,7 @@ def parse():
     parser.add_argument(
         "-x", "--noshow", action="store_true", help="do not show figures if specified"
     )
+    parser.add_argument("-m", "--model", help="path to saved model")
     return parser.parse_args()
 
 
@@ -567,7 +569,11 @@ def main():
     if args.ctrl.lower() == "rebasics":
         loader = Loader(args.joint, args.n_predict, args.n_ctrl_period)
         X_train, y_train = loader.load(args.train_data)
-        model = fit(args, X_train, y_train, params)
+        if args.model is None:
+            model = fit(args, X_train, y_train, params)
+            joblib.dump(model, "model.joblib")
+        else:
+            model = joblib.load(args.model)
         if args.test_data is not None:
             X_test, y_test = loader.load(args.test_data)
             plot(args, model, X_test, y_test, sfparam)
