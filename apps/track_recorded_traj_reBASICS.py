@@ -153,7 +153,7 @@ def plot(
     for i, joint in enumerate(args.joint):
         fig, ax = plt.subplots()
         # suffix = f" (joint={args.joint}, k={args.n_predict}, scaler={args.scaler})"
-        title = f"pressure at valve (joint={joint})"
+        title = f"pressure at valve (density={args.density:.3f}, rho={args.rho:.2f}, lr={args.leaking_rate:.2f}, joint={joint:02})"
         for j in (0, 1):
             col = 2 * i + j
             (line,) = ax.plot(y_test[:, col], ls="--", label="expected")
@@ -165,13 +165,12 @@ def plot(
             )
         ax.set_title(title)
         ax.legend()
-        if sfparam.get("filename", None) is None:
-            if title is None:
-                sfparam["filename"] = "plot"
-            else:
-                sfparam["filename"] = title.translate(
-                    str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
-                )
+        sfparam["filename"] = (
+            title.translate(
+                str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+            )
+            + ".svg"
+        )
         savefig(fig, **sfparam)
 
     # print(f"score={reg.score(X_test, y_test)}")
