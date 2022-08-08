@@ -122,9 +122,11 @@ def fit(
     )
 
     n_train_loop = args.n_train_loop
-    minlen = min(len(X_train), len(y_train))
-    X_train = X_train[:minlen]
-    y_train = y_train[:minlen]
+    n_warmup = int(warmup / dt)
+    zeros = np.zeros((n_warmup, y_train.shape[1]))
+    y_train = np.vstack((zeros, y_train))
+    assert len(X_train) == len(y_train)
+
     for i in range(n_train_loop):
         print(f"Training ({i + 1}/{n_train_loop})")
         model.reset_reservoir_state(randomize_initial_state=True)
@@ -149,6 +151,7 @@ def plot(
     n_warmup = int(warmup / dt)
     y_predict = model.run(X_test, warmup=n_warmup)
     y_predict = y_predict[n_warmup:]
+    assert len(y_test) == len(y_predict)
 
     for i, joint in enumerate(args.joint):
         fig, ax = plt.subplots()
