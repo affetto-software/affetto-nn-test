@@ -25,7 +25,7 @@ mkdir -p "$OUTPUT_BASE"
 
 function do_all(){
   dataset=$(echo "$1" | tr '[:lower:]' '[:upper:]'); shift 1
-  cmd=(pdm run ./apps/track_periodic_traj_esn.py --train-data "$@" --joint 5 --output "data.csv" --time-duration 1 --n-predict 10 --n-ctrl-period 1 --ctrl esn)
+  cmd=(pdm run ./apps/track_periodic_traj_esn.py --train-data "$@" --joint 5 --output "data.csv" --time-duration 10 --n-predict 10 --n-ctrl-period 1 --ctrl esn)
   echo "${cmd[@]}"
   "${cmd[@]}"
   for j in "${JOINT[@]}"; do
