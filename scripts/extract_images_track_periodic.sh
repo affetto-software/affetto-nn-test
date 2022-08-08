@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TARGET_DIR="$HOME/Dropbox/develop/data/20220808/track_periodic_traj_esn"
+# TARGET_DIR="$HOME/Dropbox/develop/data/20220808_2/track_periodic_traj_esn"
 FILENAME_BASE="q"
 
 mkdir -p "${TARGET_DIR}/${FILENAME_BASE}"
