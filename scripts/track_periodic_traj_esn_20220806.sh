@@ -6,7 +6,12 @@ NOW=$(date +"%Y%m%d_%H%M%S")
 TRAIN_DATA_SET_A=("$HOME/Dropbox/develop/data/20220712/data_joints-2-3-4-5")
 TRAIN_DATA_SET_B=("${TRAIN_DATA_SET_A[@]}" "$HOME/Dropbox/develop/data/20220719/data_joints-2-3-4-5_time-1-2")
 TRAIN_DATA_SET_C=("${TRAIN_DATA_SET_B[@]}" "$HOME/Dropbox/develop/data/20220719/data_joints-2-3-4-5_time-2-4")
-OUTPUT_BASE="$HOME/Dropbox/develop/data/20220808/track_periodic_traj_esn"
+TRAIN_DATA_SET_N_1=("$HOME/Dropbox/develop/data/20220805/data_N_1/time_0.1-0.5" "$HOME/Dropbox/develop/data/20220805/data_N_1/time_1-2" "$HOME/Dropbox/develop/data/20220805/data_N_1/time_2-4")
+TRAIN_DATA_SET_N_5=("$HOME/Dropbox/develop/data/20220805/data_N_5/time_0.1-0.5" "$HOME/Dropbox/develop/data/20220805/data_N_5/time_1-2" "$HOME/Dropbox/develop/data/20220805/data_N_5/time_2-4")
+TRAIN_DATA_SET_N_10=("$HOME/Dropbox/develop/data/20220805/data_N_10/time_0.1-0.5" "$HOME/Dropbox/develop/data/20220805/data_N_10/time_1-2" "$HOME/Dropbox/develop/data/20220805/data_N_10/time_2-4")
+TRAIN_DATA_SET_N_25=("$HOME/Dropbox/develop/data/20220805/data_N_25/time_0.1-0.5" "$HOME/Dropbox/develop/data/20220805/data_N_25/time_1-2" "$HOME/Dropbox/develop/data/20220805/data_N_25/time_2-4")
+TRAIN_DATA_SET_N_50=("$HOME/Dropbox/develop/data/20220805/data_N_50/time_0.1-0.5" "$HOME/Dropbox/develop/data/20220805/data_N_50/time_1-2" "$HOME/Dropbox/develop/data/20220805/data_N_50/time_2-4")
+OUTPUT_BASE="$HOME/Dropbox/develop/data/20220808_2/track_periodic_traj_esn"
 
 JOINT=(5)
 # N_PREDICT=(1 3 5 7 10 15 20 30)
@@ -53,3 +58,8 @@ function do_all(){
 do_all A "${TRAIN_DATA_SET_A[@]}"
 do_all B "${TRAIN_DATA_SET_B[@]}"
 do_all C "${TRAIN_DATA_SET_C[@]}"
+do_all N_1 "${TRAIN_DATA_SET_N_1[@]}"
+do_all N_5 "${TRAIN_DATA_SET_N_5[@]}"
+do_all N_10 "${TRAIN_DATA_SET_N_10[@]}"
+do_all N_25 "${TRAIN_DATA_SET_N_25[@]}"
+do_all N_50 "${TRAIN_DATA_SET_N_50[@]}"
