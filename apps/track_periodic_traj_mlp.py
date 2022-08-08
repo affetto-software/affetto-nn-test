@@ -136,6 +136,7 @@ def create_sin_trajectory(
 ) -> tuple[Callable[[float], np.ndarray], Callable[[float], np.ndarray]]:
     def qdes_func(t: float) -> np.ndarray:
         q = np.copy(q0)
+        q[0] = 50  # make waist joint keep at middle.
         q[joint] = A * np.sin(2.0 * np.pi * t / T) + b
         return q
 
@@ -152,6 +153,7 @@ def create_step_trajectory(
 ) -> tuple[Callable[[float], np.ndarray], Callable[[float], np.ndarray]]:
     def qdes_func(t: float) -> np.ndarray:
         q = np.copy(q0)
+        q[0] = 50  # make waist joint keep at middle.
         if t - int(t / T) * T < 0.5 * T:
             q[joint] = b + A
         else:
