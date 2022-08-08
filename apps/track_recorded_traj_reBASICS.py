@@ -105,7 +105,7 @@ def fit(
     params: dict[str, Any],
 ) -> reBASICS:
     print("fitting...")
-    dt = args.cfreq
+    dt = 1.0 / args.cfreq
     warmup = args.warmup
     pulse_value = args.pulse_value
     pulse_duration = args.pulse_duration
@@ -122,6 +122,9 @@ def fit(
     )
 
     n_train_loop = args.n_train_loop
+    minlen = min(len(X_train), len(y_train))
+    X_train = X_train[:minlen]
+    y_train = y_train[:minlen]
     for i in range(n_train_loop):
         print(f"Training ({i + 1}/{n_train_loop})")
         model.reset_reservoir_state(randomize_initial_state=True)
@@ -137,7 +140,7 @@ def plot(
     sfparam: dict[str, Any],
 ) -> None:
     print("plotting...")
-    dt = args.cfreq
+    dt = 1.0 / args.cfreq
     warmup = args.warmup
     pulse_value = args.pulse_value
     pulse_duration = args.pulse_duration
@@ -147,28 +150,29 @@ def plot(
     y_predict = model.run(X_test, warmup=n_warmup)
     y_predict = y_predict[n_warmup:]
 
-    fig, ax = plt.subplots()
-    # suffix = f" (joint={args.joint}, k={args.n_predict}, scaler={args.scaler})"
-    suffix = f" (joint={args.joint})"
-    title = "pressure at valve" + suffix
-    for i in (0, 1):
-        (line,) = ax.plot(y_test[:, i], ls="--", label="expected")
-        ax.plot(
-            y_predict[:, i],  # type: ignore
-            c=line.get_color(),
-            ls="-",
-            label="predict",
-        )
-    ax.set_title(title)
-    ax.legend()
-    if sfparam.get("filename", None) is None:
-        if title is None:
-            sfparam["filename"] = "plot"
-        else:
-            sfparam["filename"] = title.translate(
-                str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+    for i, joint in enumerate(args.joint):
+        fig, ax = plt.subplots()
+        # suffix = f" (joint={args.joint}, k={args.n_predict}, scaler={args.scaler})"
+        title = f"pressure at valve (joint={joint})"
+        for j in (0, 1):
+            col = 2 * i + j
+            (line,) = ax.plot(y_test[:, col], ls="--", label="expected")
+            ax.plot(
+                y_predict[:, col],  # type: ignore
+                c=line.get_color(),
+                ls="-",
+                label="predict",
             )
-    savefig(fig, **sfparam)
+        ax.set_title(title)
+        ax.legend()
+        if sfparam.get("filename", None) is None:
+            if title is None:
+                sfparam["filename"] = "plot"
+            else:
+                sfparam["filename"] = title.translate(
+                    str.maketrans({" ": "_", "=": "-", "(": None, ")": None, ",": None})
+                )
+        savefig(fig, **sfparam)
 
     # print(f"score={reg.score(X_test, y_test)}")
     if not args.noshow:
@@ -435,6 +439,7 @@ def parse():
         "-F",
         "--sensor-freq",
         dest="sfreq",
+        default=100.0,
         type=float,
         help="sensor frequency",
     )
@@ -442,6 +447,7 @@ def parse():
         "-f",
         "--control-freq",
         dest="cfreq",
+        default=30.0,
         type=float,
         help="control frequency",
     )
