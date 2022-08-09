@@ -349,8 +349,8 @@ def mainloop(args: argparse.Namespace, model: reBASICS | None = None):
         control(comm, ctrl, state, qdes_func, dqdes_func, 3)
 
         # Track a periodic trajectory.
-        qdes_func = spline.get_qdes_func(q0)
-        dqdes_func = spline.get_dqdes_func(q0)
+        # qdes_func = spline.get_qdes_func(q0)
+        # dqdes_func = spline.get_dqdes_func(q0)
         if model is None:
             control(
                 comm,
