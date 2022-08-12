@@ -9,7 +9,8 @@ for dir in "$TARGET_DIR/"*; do
   if [[ -d "$dir" ]]; then
     dirname=$(basename -- "$dir")
     if [[ "$dirname" != "$FILENAME_BASE" ]]; then
-       cp "${dir}/${FILENAME_BASE}"*.png "${TARGET_DIR}/${FILENAME_BASE}/${dirname}.png"
+      cp "${dir}/${FILENAME_BASE}"*.png "${TARGET_DIR}/${FILENAME_BASE}/${dirname}.png"
+      echo "${TARGET_DIR}/${FILENAME_BASE}/${dirname}.png"
     fi
   fi
 done
