@@ -629,11 +629,14 @@ class reBASICSwithReservoir(reBASICS):
                 x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
             states = [r(x_in1) for r in self.Reservoirs]
             x1 = np.array([s[0] for s in states])
-            x_in2 = self.ReservoirInput(u2)
-            if self.noise_level:
-                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
-            x2 = self.Reservoir(x_in2)
-            x = np.concatenate((x1, x2))
+            if n >= warmup:
+                x_in2 = self.ReservoirInput(u2)
+                if self.noise_level:
+                    x_in2 += self.noise_level * np.random.normal(size=(self.N_x_res,))
+                x2 = self.Reservoir(x_in2)
+                x = np.concatenate((x1, x2))
+            else:
+                x = np.concatenate((x1, np.zeros((self.N_x_res,))))
             d = D[n]
             d = self.inv_output_func(d)
 
@@ -664,7 +667,7 @@ class reBASICSwithReservoir(reBASICS):
             x1 = np.array([s[0] for s in states])
             x_in2 = self.ReservoirInput(u2)
             if self.noise_level:
-                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
+                x_in2 += self.noise_level * np.random.normal(size=(self.N_x_res,))
             x2 = self.Reservoir(x_in2)
             x = np.concatenate((x1, x2))
             X = np.vstack((X, x))
@@ -695,11 +698,14 @@ class reBASICSwithReservoir(reBASICS):
                 x_in1 += self.noise_level * np.random.normal(size=(self.N_x,))
             states = [r(x_in1) for r in self.Reservoirs]
             x1 = np.array([s[0] for s in states])
-            x_in2 = self.ReservoirInput(u2)
-            if self.noise_level:
-                x_in2 += self.noise_level * np.random.normal(size=(self.N_y,))
-            x2 = self.Reservoir(x_in2)
-            x = np.concatenate((x1, x2))
+            if n >= warmup:
+                x_in2 = self.ReservoirInput(u2)
+                if self.noise_level:
+                    x_in2 += self.noise_level * np.random.normal(size=(self.N_x_res,))
+                x2 = self.Reservoir(x_in2)
+                x = np.concatenate((x1, x2))
+            else:
+                x = np.concatenate((x1, np.zeros((self.N_x_res,))))
             X = np.vstack((X, x))
 
             y_pred = self.Output(x)
