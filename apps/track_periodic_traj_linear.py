@@ -479,6 +479,7 @@ def main():
         if args.model is None:
             reg = fit(args, X_train, y_train, params)
             joblib.dump(reg, "model.joblib")
+            print(reg[-1].coef_)
         else:
             reg = joblib.load(args.model)
         if args.test_data is not None:
