@@ -56,6 +56,16 @@ freq = 100  # Use exact the same value in Affetto_AbstractionLayer.exe
 
 ```
 
+When you use the position-based PID control, specify the PID gains as
+follows:
+```
+[affetto.ctrl.pid]
+kP = [4.5, 1.6, 5.48, 3.08, 3.64, 3.4, 3.16, 1.6, 5.6, 3.04, 2.96, 3.32, 3.16]
+kD = [0.021, 0.008, 0.044, 0.148, 0.016, 0.016, 0.052, 0.004, 0.055, 0.164, 0.02, 0.048, 0.06]
+kI = [0.001, 0.0008, 0.0005, 0.0036, 0.001, 0.0009, 0.0, 0.0008, 0.0005, 0.0052, 0.001, 0.0009, 0.0]
+stiff = [400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0, 400.0]
+```
+
 ### Generation of random movements
 
 To generate random movements and save pressures at valves, pressures
