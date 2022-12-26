@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import csv
 import random
 import time
 from pathlib import Path
@@ -16,13 +15,13 @@ DEFAULT_JOINT_LIST = [0]
 DEFAULT_DURATION = 60.0  # sec
 DEFAULT_SEED = None
 DEFAULT_MAX_UPDATE_DIFF = 40.0
-DEFAULT_UPDATE_TIME = 1.0
+DEFAULT_TIME_UPDATE = 1.0
 DEFAULT_LIMIT = [5.0, 95.0]
 DEFAULT_N_REPEAT = 10
 
 
 GeneratorT = Generator[
-    tuple[float, Callable[[float], np.ndarray], Callable[[float], np.ndarray]],
+    tuple[Callable[[float], np.ndarray], Callable[[float], np.ndarray]],
     None,
     None,
 ]
@@ -69,10 +68,8 @@ def prepare_logger(dof: int) -> Logger:
         [f"cb{i}" for i in range(dof)],
         [f"qdes{i}" for i in range(dof)],
         [f"dqdes{i}" for i in range(dof)],
-        # coordinates
-        ["x"],
-        ["y"],
-        ["z"],
+        # coordinates of the color blob
+        ["x", "y", "z", "r"],
     )
     return logger
 
@@ -100,46 +97,18 @@ def control(
     qdes_func: Callable[[float], np.ndarray],
     dqdes_func: Callable[[float], np.ndarray],
     duration: float,
-    logger: Logger | None = None,
-    log_filename: str | Path | None = None,
 ):
     timer = Timer(rate=ctrl.freq)
-    if logger is not None:
-        logger.erase_data()
-        logger.set_filename(
-            log_filename if log_filename is not None else Path("data.csv")
-        )
     timer.start()
     t = 0
-    # To read csv File only once during loop
-    csvFileRead = 1
-    xSave, ySave, zSave = 0, 0, 0
-    ########### Why does this read in exist? ################
     while t < duration:
         t = timer.elapsed_time()
-        rq, rdq, rpa, rpb = state.get_raw_states()
+        # rq, rdq, rpa, rpb = state.get_raw_states()
         q, dq, pa, pb = state.get_states()
         qdes = qdes_func(t)
         dqdes = dqdes_func(t)
         ca, cb = ctrl.update(t, q, dq, pa, pb, qdes, dqdes)
-        # read in csv file only once
-        if t > duration - 0.5 and csvFileRead:
-            # this try never succeeds... Why? Does it matter?
-            try:
-                df = pd.read_csv("~/Desktop/erhan_cam/coordinates.csv")
-                if readPrintTwo:
-                    print(df.values.tolist())
-                    readPrintTwo = 0
-                xSave, ySave, zSave, r = df.values.tolist()[0]
-                csvFileRead = 0
-            except:
-                print("Couldnt read file")
-        x, y, z, r = xSave, ySave, zSave, 0
         comm.send_commands(ca, cb)
-        if logger is not None:
-            logger.store(
-                t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes, x, y, z
-            )
         timer.block()
 
 
@@ -152,13 +121,25 @@ def _control_random(
     T: float,
     qdes_func: Callable[[float], np.ndarray],
     dqdes_func: Callable[[float], np.ndarray],
-    logger: Logger | None = None,
-):
+) -> tuple[
+    float,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     t = t0
-    readPrintTwo = 1
-    # To read csv File only once during loop and save zeros before it is read
-    csvFileRead = 1
-    xSave, ySave, zSave = 0, 0, 0
+    rq, rdq, rpa, rpb = np.zeros(state.dof, dtype=float)
+    q, dq, pa, pb = np.zeros(state.dof, dtype=float)
+    qdes, dqdes, ca, cb = np.zeros(state.dof, dtype=float)
 
     while t < t0 + T:
         t = timer.elapsed_time()
@@ -167,26 +148,9 @@ def _control_random(
         qdes = qdes_func(t)
         dqdes = dqdes_func(t)
         ca, cb = ctrl.update(t, q, dq, pa, pb, qdes, dqdes)
-        # read in csv file after angles are settled, 0.5 second timeframe to do so
-        if t > t0 + T - 0.5 and csvFileRead:
-            # this try always succeeds :)
-            try:
-                df = pd.read_csv("~/Desktop/erhan_cam/coordinates.csv")
-                if readPrintTwo:
-                    print(df.values.tolist())
-                    readPrintTwo = 0
-                xSave, ySave, zSave, r = df.values.tolist()[0]
-                csvFileRead = 0
-            # to prevent any failures just in case the csv file is written on in that moment
-            except:
-                print("Couldnt read file 2")
-        x, y, z, r = xSave, ySave, zSave, 0
         comm.send_commands(ca, cb)
-        if logger is not None:
-            logger.store(
-                t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes, x, y, z
-            )
         timer.block()
+    return t, rq, rdq, rpa, rpb, q, dq, pa, pb, qdes, dqdes, ca, cb
 
 
 def control_random(
@@ -195,7 +159,8 @@ def control_random(
     state: AffStateThread,
     joint: int | list[int],
     generator: GeneratorT,
-    duration: float,
+    T: float,  # Time to update next pose of the robot
+    duration: float,  # Time duration for one sequence of movements
     logger: Logger | None = None,
     log_filename: str | Path | None = None,
     quiet: bool = True,
@@ -209,13 +174,43 @@ def control_random(
 
     timer.start()
     t = 0
-    for T, qdes_func, dqdes_func in generator:
+    for qdes_func, dqdes_func in generator:
         if t > duration:
             break
         t0 = t
+
+        # It taks 'T' sec to execute the function below. It returns
+        # the last sensor states and commands. We expect that the
+        # robot stands still, which means stops completely, at this
+        # moment.
+        t, rq, rdq, rpa, rpb, q, dq, pa, pb, qdes, dqdes, ca, cb = _control_random(
+            comm, ctrl, state, timer, t0, T, qdes_func, dqdes_func
+        )
+
+        # Get x, y and z positions of color blobs from the camera.
+        # Since coordinates.csv will be updated by other program,
+        # update frequency of this 'for' loop must be synchronized
+        # with updates of coordinates.csv.
+        try:
+            df = pd.read_csv("~/Desktop/erhan_cam/coordinates.csv")
+            # Please check if tolist()[0] is correct. Should it be
+            # tolist()[-1]?
+            x, y, z, r = df.values.tolist()[0]
+        # to prevent any failures just in case the csv file is written on in that moment
+        except:
+            x, y, z, r = 0, 0, 0, 0
+            print("Couldnt read file 2")
+
+        # Save sensor data in the logger.
+        if logger is not None:
+            logger.store(
+                t, rq, rdq, rpa, rpb, q, dq, pa, pb, ca, cb, qdes, dqdes, x, y, z, r
+            )
+
         if not quiet:
-            print(f"T={T}, qdes={qdes_func(t)[joint]}, dqdes={dqdes_func(t)[joint]}")
-        _control_random(comm, ctrl, state, timer, t0, T, qdes_func, dqdes_func, logger)
+            print(
+                f"T={T}, qdes={qdes_func(t)[joint]}, blob position({r})=[{x}, {y}, {z}]"
+            )
         t = timer.elapsed_time()
     if logger is not None:
         logger.dump()
@@ -227,13 +222,8 @@ def random_trajectory_generator(
     seed: int | None,
     qdes_first: float | list[float] | np.ndarray,
     diff_max: float,
-    t_range: list[float],
     limit: list[float],
 ) -> GeneratorT:
-    if len(t_range) == 0:
-        t_range = DEFAULT_TIME_RANGE
-    elif len(t_range) == 1:
-        t_range.insert(0, 0.0)
     if len(limit) <= 1:
         ValueError(f"Size of limit requires at least 2: len(limit)={len(limit)}")
     elif limit[0] >= limit[1]:
@@ -252,8 +242,7 @@ def random_trajectory_generator(
             qdes_new[qdes_new > limit[1]] - limit[1]
         )
         qdes_new = np.minimum(np.maximum(limit[0], qdes_new), limit[1])
-        T = random.uniform(t_range[0], t_range[1])
-        yield T, *create_const_trajectory(qdes_new, joint, q0)
+        yield create_const_trajectory(qdes_new, joint, q0)
         qdes = qdes_new
 
 
@@ -268,7 +257,7 @@ def record(
     duration: float,
     seed: int | None,
     diff_max: float,
-    t_range: list[float],
+    t_update: float,
     limit: list[float],
     i: int,
     cnt: int,
@@ -285,9 +274,11 @@ def record(
     joint_str = str(joint).strip("[]").replace(" ", "")
     log_filename = output_dir / f"random_joint-{joint_str}_{i:02}.csv"
     generator = random_trajectory_generator(
-        q0, joint, seed, qdes_first, diff_max, t_range, limit
+        q0, joint, seed, qdes_first, diff_max, limit
     )
-    control_random(comm, ctrl, state, joint, generator, duration, logger, log_filename)
+    control_random(
+        comm, ctrl, state, joint, generator, t_update, duration, logger, log_filename
+    )
 
 
 def mainloop(
@@ -297,7 +288,7 @@ def mainloop(
     duration: float,
     seed: int | None,
     diff_max: float,
-    t_range: list[float],
+    t_update: float,
     limit: list[float],
     n_repeat: int,
     start_index: int,
@@ -331,7 +322,7 @@ def mainloop(
                 duration,
                 seed,
                 diff_max,
-                t_range,
+                t_update,
                 limit,
                 i,
                 cnt,
@@ -405,11 +396,10 @@ def parse():
     )
     parser.add_argument(
         "-t",
-        "--time-range",
-        nargs="+",
-        default=DEFAULT_TIME_RANGE,
+        "--time-update",
+        default=DEFAULT_TIME_UPDATE,
         type=float,
-        help="Time range when desired position is updated.",
+        help="Time to update the next desired position of the robot.",
     )
     parser.add_argument(
         "-l",
@@ -446,7 +436,7 @@ def main():
         args.time,
         args.seed,
         args.max_diff,
-        args.time_range,
+        args.time_update,
         args.limit,
         args.n,
         args.start_index,
