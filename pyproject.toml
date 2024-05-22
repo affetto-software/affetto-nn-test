@@ -1,5 +1,5 @@
 [project]
-name = "Affetto Controller Driven by Neural Networks"
+name = "affetto-nn-test"
 version = "0.1.0"
 description = "Control Affetto by artificial neural networks"
 authors = [
@@ -12,15 +12,28 @@ dependencies = [
     "scipy>=1.8.1",
     "scikit-learn>=1.1.1",
 ]
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10,<3.12"
 license = {text = "MIT"}
 
 [project.optional-dependencies]
 [tool.pdm]
+distribution = true
+
 [tool.pdm.dev-dependencies]
 dev = [
     "-e file:///${PROJECT_ROOT}/affctrllib#egg=affctrllib",
 ]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+atomic = true
+filter_files = true
+known_first_party = ["affetto_nn_test"]
+
 [tool.pyright]
 extraPaths = [
     "__pypackages__/3.10/lib",
