@@ -186,7 +186,9 @@ def prepare_ctrl(
 ) -> tuple[AffComm, AffPosCtrl, AffStateThread]:
     comm = AffComm(config_path=config)
     comm.create_command_socket()
-    state = AffStateThread(config=config, freq=sfreq, logging=False, output=None)
+    state = AffStateThread(
+        config=config, freq=sfreq, logging=False, output=None, butterworth=True
+    )
     ctrl = AffPosCtrl(config_path=config, freq=cfreq)
     state.prepare()
     state.start()
