@@ -83,7 +83,7 @@ def prepare_ctrl(
     comm = AffComm(config_path=config)
     comm.create_command_socket()
     state = AffStateThread(
-        config=config, freq=sfreq, logging=False, output=None, butterworth=True
+        config=config, freq=sfreq, logging=False, output=None, butterworth=False
     )
     ctrl = AffPosCtrl(config_path=config, freq=cfreq)
     state.prepare()
