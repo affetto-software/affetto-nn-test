@@ -9,14 +9,14 @@ from typing import Any, Callable
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
+from _fit import fit_data
+from _loader import LoaderBase
+from _plot import convert_args_to_sfparam, plot_prediction
 from scipy import interpolate
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 
-from _fit import fit_data
-from _loader import LoaderBase
-from _plot import convert_args_to_sfparam, plot_prediction
+from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]

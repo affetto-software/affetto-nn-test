@@ -9,11 +9,11 @@ import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
-
 from _loader import LoaderBase
 from _plot import convert_args_to_sfparam, plot_prediction
 from model import ESN, Tikhonov
+
+from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
 DEFAULT_JOINT_LIST = [0]

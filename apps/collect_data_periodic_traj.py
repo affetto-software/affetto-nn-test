@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
+
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
@@ -219,7 +220,7 @@ def mainloop(
     N = len(amplitude) * len(period) * len(bias) * n_repeat
     cnt = 0
     try:
-        for (A, T, b) in itertools.product(amplitude, period, bias):
+        for A, T, b in itertools.product(amplitude, period, bias):
             for i in range(n_repeat):
                 record(
                     comm,

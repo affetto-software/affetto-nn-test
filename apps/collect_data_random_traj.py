@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Generator, Iterable
 
 import numpy as np
+
 from affctrllib import AffComm, AffPosCtrl, AffStateThread, Logger, Timer
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.joinpath("config.toml")
