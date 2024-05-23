@@ -305,11 +305,11 @@ def parse():
         help="Path to directory where test data files are stored.",
     )
     parser.add_argument(
-        "--n-predict", required=True, type=int, help="Number of samples to predict"
+        "--n-predict", default=10, type=int, help="Number of samples to predict"
     )
     parser.add_argument(
         "--n-ctrl-period",
-        required=True,
+        default=1,
         type=int,
         help="Number of samples that equals control period",
     )
