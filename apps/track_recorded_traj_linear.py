@@ -242,7 +242,7 @@ def mainloop(args: argparse.Namespace, reg: Pipeline | None = None):
         # Get back to home position.
         print("Getting back to home position...")
         qdes_func, dqdes_func = create_const_trajectory(None, None, q0)
-        control(comm, ctrl, state, qdes_func, dqdes_func, 3)
+        control(comm, ctrl, state, qdes_func, dqdes_func, 10)
 
         # Track the recorded trajectory.
         time_offset = args.n_predict * ctrl.dt

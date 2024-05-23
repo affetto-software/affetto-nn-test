@@ -348,7 +348,7 @@ def mainloop(args: argparse.Namespace, model: reBASICS | None = None):
         # Get back to home position.
         print("Getting back to home position...")
         qdes_func, dqdes_func = create_const_trajectory(None, None, q0)
-        control(comm, ctrl, state, qdes_func, dqdes_func, 3)
+        control(comm, ctrl, state, qdes_func, dqdes_func, 10)
 
         # Track a periodic trajectory.
         # qdes_func = spline.get_qdes_func(q0)
