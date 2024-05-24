@@ -40,10 +40,12 @@ data="${output}/${now}.csv"
 cd ~/develop/affctrllib
 mkdir -p "$HOME/Dropbox/work/data/affetto_nn_test/filter_sensory_data"
 
-joints=(5); T=30; app=filter_sensory_data; output="$HOME/Dropbox/work/data/affetto_nn_test/${app}/joints-${(j:-:)joints}_$(date '+%Y%m%d_%H%M%S').csv"; echo pdm run python "./apps/${app}.py" -c apps/config.toml -o "$output" -T ${T}
+joints=(5); T=30; app=filter_sensory_data; output="$HOME/Dropbox/work/data/affetto_nn_test/${app}/joints-${(j:-:)joints}_$(date '+%Y%m%d_%H%M%S').csv"; pdm run python "./apps/${app}.py" -c apps/config.toml -o "$output" -T ${T}
 
 ### Tracking recorded trajectory with PID control
-record="$HOME/Dropbox/work/data/affetto_nn_test/filter_sensory_data/joints-5_20240523_161044.csv"
+#record="$HOME/Dropbox/work/data/affetto_nn_test/filter_sensory_data/joints-5_20240523_161044.csv"
+#record="$HOME/Dropbox/work/data/affetto_nn_test/filter_sensory_data/joints-5_20240524_124522.csv"
+record="$HOME/Dropbox/work/data/affetto_nn_test/track_recorded_traj_mlp/joints-5_20240524_124522/mlp_minmax_10/20240524_124819.csv"
 joints=(5); T=30;
 
 app=track_recorded_traj_mlp; now=$(date '+%Y%m%d_%H%M%S'); ctrl=pid;
